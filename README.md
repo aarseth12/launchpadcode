@@ -134,3 +134,9 @@ Python lessons are plain objects in `server/src/courses/python.ts`: a title, ins
 code, walkthrough steps, and `expect` checks that grade the project's output (including scripted
 `input()` answers and canvas drawings). Add a new lesson object to the `LESSONS` list at the bottom
 of the file and restart the server.
+
+## License
+
+[MIT](LICENSE): free to use, change and share, including in your own classes.
+
+FTC and FIRST are trademarks of FIRST (For Inspiration and Recognition of Science and Technology). This project is not affiliated with or endorsed by FIRST; the FTC course only mimics the FTC SDK's programming interface for teaching.
