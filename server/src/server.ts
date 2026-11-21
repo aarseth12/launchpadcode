@@ -33,7 +33,7 @@ function chatTutorBlock(studentId: number | undefined, lessonId: string | undefi
   return null;
 }
 
-// Minimal .env loader (no dependency): make server/.env's ANTHROPIC_API_KEY available.
+// Minimal .env loader (no dependency): load server/.env (ANTHROPIC_API_KEY etc.). Real env vars win.
 const ENV_PATH = path.resolve(HERE, "..", ".env");
 if (existsSync(ENV_PATH)) {
   for (const line of readFileSync(ENV_PATH, "utf8").split("\n")) {

@@ -3,12 +3,13 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "Server for the FTC Java tutorial: sandboxed javac compile-and-run + Haiku tutor proxy.",
+  "description": "Launchpad Code server: lessons, sandboxed Python/Java runner, SQLite storage, AI coach.",
   "scripts": {
+    "start": "node src/server.ts",
     "demo": "node src/demo.ts"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",
