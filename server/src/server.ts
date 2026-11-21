@@ -350,4 +350,4 @@ wss.on("connection", (ws: WebSocket) => {
 });
 
 if (SANDBOX === "docker") sweepLeakedContainers(); // clear any sandbox containers left over from a crash
-server.listen(PORT, () => console.log(`FTC tutorial server → http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Launchpad Code server → http://localhost:${PORT}`));
