@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FTC Java Tutorial — Live Sim</title>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e6e9ef; --muted:#8b93a3; --accent:#4ea1ff; --green:#46d17a; --red:#ff5d5d; --amber:#f5b14c;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:12px 18px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:15px; margin:0; font-weight:600; white-space:nowrap; }
+  .lesson-select { font:inherit; font-size:13px; background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:7px; padding:6px 10px; }
+  .pill { font-size:12px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:3px 11px; font-family:var(--mono); white-space:nowrap; }
+  .pill.running { color:var(--green); border-color:var(--green); }
+  .pill.compiling, .pill.grading { color:var(--amber); border-color:var(--amber); }
+  .pill.passed { color:var(--green); border-color:var(--green); }
+  .pill.error { color:var(--red); border-color:var(--red); }
+  .spacer { flex:1; }
+  button { font:inherit; font-size:13px; font-weight:600; border:1px solid var(--line); background:var(--panel2); color:var(--text); border-radius:7px; padding:7px 15px; cursor:pointer; }
+  button.run { background:var(--accent); border-color:var(--accent); color:#06122a; }
+  button.check { background:var(--green); border-color:var(--green); color:#06210f; }
+  button:disabled { opacity:.45; cursor:default; }
+  .app { display:grid; grid-template-columns:1fr 580px; gap:16px; padding:16px; align-items:start; }
+  @media (max-width:1200px){ .app { grid-template-columns:1fr; } }
+  .col { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .panel h2 { margin:0; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); padding:9px 13px; border-bottom:1px solid var(--line); background:var(--panel2); }
+  /* Lesson / Simulator tab toggle (right column). Code stays pinned on the left; this flips the right pane. */
+  .tabbar { display:flex; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:6px; }
+  .tab { flex:1; appearance:none; border:0; border-radius:7px; background:transparent; color:var(--muted); font-family:inherit; font-size:12.5px; font-weight:600; padding:9px 12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .tab:hover { color:var(--text); }
+  .tab.active { background:var(--panel2); color:var(--text); box-shadow:inset 0 0 0 1px var(--line); }
+  .tab .live-dot { width:7px; height:7px; border-radius:50%; background:var(--red); opacity:0; }
+  .tab .live-dot.on { opacity:1; box-shadow:0 0 7px var(--red); animation:livePulse 1.1s ease-in-out infinite; }
+  @keyframes livePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.82)} }
+  .tabpane { display:none; flex-direction:column; gap:12px; min-width:0; }
+  .tabpane.active { display:flex; }
+  .instructions { padding:12px 14px; font-size:13.5px; line-height:1.5; max-height:600px; overflow:auto; }
+  .instructions h3 { margin:0 0 8px; font-size:15px; }
+  .instructions p { margin:0 0 10px; }
+  .instructions code { font-family:var(--mono); font-size:12px; background:var(--panel2); padding:1px 5px; border-radius:4px; }
+  .instructions pre.md-code { background:#0b0d11; border:1px solid var(--line); border-radius:6px; padding:10px; overflow-x:auto; font-family:var(--mono); font-size:12px; line-height:1.5; margin:0 0 10px; }
+  .tok-com { color:#6a9955; font-style:italic; }
+  .tok-kw  { color:#569cd6; }
+  .tok-type{ color:#4ec9b0; }
+  .tok-str { color:#ce9178; }
+  .tok-num { color:#b5cea8; }
+  .tok-ann { color:#dcdcaa; }
+  .tok-fn  { color:#dcdcaa; }
+  /* Syntax-highlighted editor: a highlighted <pre> sits exactly behind a transparent-text <textarea>.
+     Both MUST share identical text metrics so the visible colors line up under the real caret. */
+  .code-wrap { position:relative; background:#0b0d11; }
+  .code-wrap > pre.code-hl, .code-wrap > textarea#code { margin:0; padding:13px 13px 13px 46px; border:0; font-family:var(--mono); font-size:12.5px; line-height:1.55; tab-size:4; white-space:pre; box-sizing:border-box; }
+  /* Line-number gutter: shares the code's exact text metrics so row N lines up with source line N — which is the line javac reports in a compile error. */
+  .code-wrap > .gutter { position:absolute; left:0; top:0; bottom:0; width:46px; z-index:2; overflow:hidden; margin:0; padding:13px 10px 13px 0; border:0; border-right:1px solid #1b1f27; box-sizing:border-box; font-family:var(--mono); font-size:12.5px; line-height:1.55; text-align:right; white-space:pre; color:#5a6273; background:#0b0d11; pointer-events:none; user-select:none; -webkit-user-select:none; }
+  pre.code-hl { position:absolute; inset:0; z-index:0; overflow:hidden; color:#cdd3df; background:transparent; pointer-events:none; }
+  pre.code-hl code { font:inherit; color:inherit; background:transparent; padding:0; border:0; border-radius:0; }
+  textarea#code { position:relative; z-index:1; display:block; width:100%; height:380px; resize:vertical; outline:none; background:transparent; color:transparent; caret-color:#e6e9ef; overflow:auto; }
+  .diag { font-family:var(--mono); font-size:12.5px; padding:11px 13px; color:var(--muted); min-height:40px; }
+  .diag .err { color:var(--red); }
+  .diag .ok { color:var(--green); }
+  .diag .hint { color:var(--muted); padding-left:18px; }
+  canvas { background:#0b0d11; display:block; width:100%; height:auto; }
+  .tele { font-family:var(--mono); font-size:12.5px; padding:10px 13px; min-height:42px; }
+  .tele .row { display:flex; justify-content:space-between; gap:10px; padding:2px 0; }
+  .tele .k { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tele .v { color:var(--text); flex:none; font-variant-numeric:tabular-nums; }
+  .legend { display:flex; flex-wrap:wrap; gap:7px 15px; font-size:12.5px; color:var(--muted); padding:10px 13px; }
+  .kbd { font-family:var(--mono); font-size:11.5px; background:var(--panel2); border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:1px 6px; color:var(--text); }
+  .chat { padding:10px 13px; max-height:240px; overflow:auto; display:flex; flex-direction:column; gap:8px; font-size:13px; line-height:1.45; }
+  .chat .chat-hint { color:var(--muted); font-size:12.5px; }
+  .chat .msg { padding:7px 10px; border-radius:8px; max-width:92%; white-space:pre-wrap; word-wrap:break-word; }
+  .chat .me { align-self:flex-end; background:var(--panel2); border:1px solid var(--line); }
+  .chat .bot { align-self:flex-start; background:#10202b; border:1px solid #20455a; }
+  .chat .bot.err { background:#2a1416; border-color:#5a2530; color:#ffd0d0; }
+  .chat .bot code { font-family:var(--mono); font-size:12px; background:#0b0d11; padding:1px 4px; border-radius:4px; }
+  .chatbar { display:flex; gap:8px; padding:10px 13px; border-top:1px solid var(--line); }
+  .chatbar input { flex:1; font:inherit; font-size:13px; background:#0b0d11; color:var(--text); border:1px solid var(--line); border-radius:7px; padding:7px 10px; outline:none; }
+  .gate { position:fixed; inset:0; background:rgba(8,10,14,.86); display:flex; align-items:center; justify-content:center; z-index:50; }
+  .gate-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:24px 26px; width:min(440px,92vw); }
+  .gate-card h2 { margin:0 0 8px; font-size:18px; }
+  .gate-card p { margin:0 0 16px; color:var(--muted); font-size:13.5px; line-height:1.5; }
+  .gate-card input { width:100%; font:inherit; font-size:14px; background:#0b0d11; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:12px; outline:none; }
+  .gate-card button { width:100%; }
+  .who { font-size:12.5px; color:var(--muted); white-space:nowrap; }
+  .who b { color:var(--text); }
+  .who a { color:var(--accent); text-decoration:none; cursor:pointer; }
+  /* Lesson-complete banner + telemetry spotlight */
+  .done-banner { display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin:0 16px; padding:14px 18px; background:linear-gradient(90deg, rgba(70,209,122,.16), rgba(78,161,255,.10)); border:1px solid var(--green); border-radius:12px; }
+  .done-emoji { font-size:26px; line-height:1; }
+  .done-main { flex:1; min-width:200px; }
+  .done-title { font-size:16px; font-weight:700; }
+  .done-sub { font-size:13px; color:var(--muted); margin-top:3px; line-height:1.45; }
+  .done-actions { display:flex; gap:9px; flex-wrap:wrap; }
+  a.done-btn { font-size:13px; font-weight:600; text-decoration:none; border:1px solid var(--line); background:var(--panel2); color:var(--text); border-radius:8px; padding:8px 14px; white-space:nowrap; }
+  a.done-btn.primary { background:var(--green); border-color:var(--green); color:#06210f; }
+  .panel.glow { border-color:var(--green); box-shadow:0 0 0 1px var(--green), 0 0 16px rgba(70,209,122,.35); animation:teleGlow 1.3s ease-in-out 3; }
+  @keyframes teleGlow { 0%,100%{ box-shadow:0 0 0 1px var(--green), 0 0 6px rgba(70,209,122,.2);} 50%{ box-shadow:0 0 0 1px var(--green), 0 0 22px rgba(70,209,122,.55);} }
+  .tele-tip { font-size:12.5px; line-height:1.45; color:var(--green); padding:0 13px 11px; }
+</style>
+<script src="highlight.js"></script>
+</head>
+<body>
+  <div class="gate" id="loginGate" style="display:none">
+    <div class="gate-card">
+      <h2>Welcome to the FTC Java Tutorial</h2>
+      <p>Enter your name to start. Your code and progress save automatically — sign in with the same name on any computer to pick up where you left off.</p>
+      <input id="nameInput" placeholder="Your name" autocomplete="off" maxlength="40" />
+      <button class="run" id="startBtn">Start →</button>
+    </div>
+  </div>
+  <header>
+    <h1>FTC Java Tutorial</h1>
+    <a href="lesson.html" style="font-size:13px;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:7px;padding:6px 11px;white-space:nowrap;">📚 Lessons</a>
+    <select class="lesson-select" id="lessonSelect"></select>
+    <span class="pill" id="status">connecting…</span>
+    <div class="spacer"></div>
+    <button class="run" id="runBtn">▶ Run</button>
+    <button class="check" id="checkBtn">✓ Check</button>
+    <button id="stopBtn" disabled>■ Stop</button>
+    <span class="who" id="who"></span>
+  </header>
+
+  <div id="doneBanner" class="done-banner" style="display:none"></div>
+
+  <div class="app">
+    <div class="col">
+      <div class="panel">
+        <h2>OpMode.java</h2>
+        <div class="code-wrap">
+          <div class="gutter" id="gutter" aria-hidden="true"></div>
+          <pre class="code-hl" aria-hidden="true"><code id="codeHL"></code></pre>
+          <textarea id="code" spellcheck="false" wrap="off"></textarea>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Output</h2>
+        <div class="diag" id="diag">Pick a lesson, write code, then <b>Run</b> to drive or <b>Check</b> to grade.</div>
+      </div>
+      <div class="panel">
+        <h2>Tutor — Haiku</h2>
+        <div class="chat" id="chat"><div class="chat-hint">Stuck? Ask for a hint — the tutor can see your code, the lesson, and the latest output.</div></div>
+        <div class="chatbar">
+          <input id="chatInput" type="text" placeholder="Ask the tutor a question…" autocomplete="off" />
+          <button class="check" id="askBtn">Ask</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="tabbar" role="tablist">
+        <button class="tab active" id="tabLesson" role="tab" aria-selected="true">Lesson</button>
+        <button class="tab" id="tabSim" role="tab" aria-selected="false">Simulator <span class="live-dot" id="simLive"></span></button>
+      </div>
+      <div class="tabpane active" id="paneLesson" role="tabpanel" aria-labelledby="tabLesson">
+        <div class="panel"><div class="instructions" id="instructions">Loading lessons…</div></div>
+      </div>
+      <div class="tabpane" id="paneSim" role="tabpanel" aria-labelledby="tabSim">
+        <div class="panel"><canvas id="field" width="580" height="580"></canvas></div>
+        <div class="panel" id="telePanel">
+          <h2>Telemetry</h2>
+          <div class="tele" id="tele"><span style="color:var(--muted)">— not running —</span></div>
+          <div class="tele-tip" id="teleTip" style="display:none"></div>
+        </div>
+        <div class="panel">
+          <h2>Driver controls</h2>
+          <div class="legend" id="padStatus">🔌 No controller — using keyboard. Plug in a gamepad and press a button to use it.</div>
+          <div class="legend">
+            <span><span class="kbd">W</span><span class="kbd">S</span> forward / back</span>
+            <span><span class="kbd">A</span><span class="kbd">D</span> strafe</span>
+            <span><span class="kbd">Q</span><span class="kbd">E</span> turn</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const codeEl = document.getElementById("code");
+  const codeHL = document.getElementById("codeHL");
+  const codePre = codeHL.parentElement;
+  const gutterEl = document.getElementById("gutter");
+
+  let gutterLineCount = -1;
+  function renderGutter() {
+    const n = codeEl.value.split("\n").length;
+    if (n === gutterLineCount) return;          // rebuild only when the line count actually changes
+    gutterLineCount = n;
+    let s = "1";
+    for (let i = 2; i <= n; i++) s += "\n" + i;
+    gutterEl.textContent = s;
+  }
+  // Re-highlight the <pre> behind the editor, refresh the line numbers, and keep both the
+  // highlight layer and the gutter scroll-locked to the textarea's scroll position.
+  function syncScroll() { codePre.scrollTop = gutterEl.scrollTop = codeEl.scrollTop; codePre.scrollLeft = codeEl.scrollLeft; }
+  function syncHL() { codeHL.innerHTML = highlightJava(codeEl.value) + "\n"; renderGutter(); syncScroll(); }
+  codeEl.addEventListener("input", syncHL);
+  codeEl.addEventListener("scroll", syncScroll);
+  const statusEl = document.getElementById("status");
+  const diagEl = document.getElementById("diag");
+  const teleEl = document.getElementById("tele");
+  const doneBanner = document.getElementById("doneBanner");
+  const telePanel = document.getElementById("telePanel");
+  const teleTip = document.getElementById("teleTip");
+  const runBtn = document.getElementById("runBtn");
+  const checkBtn = document.getElementById("checkBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const instrEl = document.getElementById("instructions");
+  const selectEl = document.getElementById("lessonSelect");
+
+  // ---- Lesson / Simulator tabs (right column) ----
+  const tabLesson = document.getElementById("tabLesson");
+  const tabSim = document.getElementById("tabSim");
+  const paneLesson = document.getElementById("paneLesson");
+  const paneSim = document.getElementById("paneSim");
+  const simLive = document.getElementById("simLive");
+  function showTab(which) {
+    const sim = which === "sim";
+    tabSim.classList.toggle("active", sim); tabSim.setAttribute("aria-selected", String(sim));
+    tabLesson.classList.toggle("active", !sim); tabLesson.setAttribute("aria-selected", String(!sim));
+    paneSim.classList.toggle("active", sim);
+    paneLesson.classList.toggle("active", !sim);
+  }
+  tabLesson.onclick = () => showTab("lesson");
+  tabSim.onclick = () => showTab("sim");
+  const gateEl = document.getElementById("loginGate");
+  const nameInput = document.getElementById("nameInput");
+  const startBtn = document.getElementById("startBtn");
+  const whoEl = document.getElementById("who");
+
+  let student = null;
+  try { student = JSON.parse(localStorage.getItem("ftcStudent") || "null"); } catch { }
+  let progress = {}; // lessonId -> { code, passed }
+
+  function esc(s){ return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  function unesc(s){ return s.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&amp;/g,"&"); }
+  function mdInline(x){ return x.replace(/`([^`]+)`/g,(m,c)=>`<code>${highlightJava(unesc(c))}</code>`).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>'); }
+  function md(src){
+    return src.split(/\n\n+/).map(b => {
+      const f = b.match(/^```[a-z]*\n([\s\S]*?)```$/);
+      if (f) return `<pre class="md-code">${highlightJava(f[1].replace(/\n$/,""))}</pre>`;
+      if (b.startsWith("# ")) return `<h3>${mdInline(esc(b.slice(2)))}</h3>`;
+      return `<p>${mdInline(esc(b)).replace(/\n/g,"<br>")}</p>`;
+    }).join("");
+  }
+
+  // ---- Lessons ----
+  let lessons = [], current = null;
+  function refreshLessonOptions() {
+    const practice = lessons.filter(l => Array.isArray(l.checks) && l.checks.length);
+    const cur = selectEl.value;
+    selectEl.innerHTML = practice.map(l => `<option value="${l.id}">${progress[l.id] && progress[l.id].passed ? "✓ " : ""}${l.order}. ${esc(l.title)}</option>`).join("");
+    if (cur) selectEl.value = cur;
+  }
+  async function loadLessons() {
+    try {
+      lessons = (await (await fetch("/api/lessons")).json()).sort((a,b) => a.order - b.order);
+    } catch (e) { instrEl.textContent = "Could not load lessons."; return; }
+    refreshLessonOptions();
+    const practice = lessons.filter(l => Array.isArray(l.checks) && l.checks.length);
+    const want = new URLSearchParams(location.search).get("lesson");
+    selectLesson(practice.some(l => l.id === want) ? want : practice[0].id);
+  }
+  function selectLesson(id) {
+    current = lessons.find(l => l.id === id);
+    if (!current) return;
+    selectEl.value = id;
+    hideDone(); telePanel.classList.remove("glow"); teleTip.style.display = "none";
+    showTab("lesson");                    // a freshly picked lesson opens on its instructions
+    instrEl.innerHTML = md(current.instructions);
+    const saved = progress[id] && progress[id].code;
+    codeEl.value = (saved != null && saved !== "") ? saved : current.starterCode;
+    syncHL();
+    diagEl.innerHTML = progress[id] && progress[id].passed
+      ? '<div class="ok">✓ You passed this lesson. Edit and re-check anytime.</div>'
+      : "Write your code, then <b>Run</b> to drive or <b>Check</b> to grade.";
+    window.__current = current;
+  }
+  selectEl.onchange = () => selectLesson(selectEl.value);
+
+  // ---- Autosave (debounced) — persists the student's code per lesson ----
+  let saveTimer = null;
+  function pushSave() { if (student && current && ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "save", lessonId: current.id, code: codeEl.value })); }
+  codeEl.addEventListener("input", () => {
+    if (current) progress[current.id] = { ...(progress[current.id] || {}), code: codeEl.value };
+    clearTimeout(saveTimer); saveTimer = setTimeout(pushSave, 1200);
+  });
+
+  // ---- Canvas / field ----
+  const canvas = document.getElementById("field");
+  const ctx = canvas.getContext("2d");
+  const SIZE = 580, TILES = 6, TILE = SIZE / TILES, PPI = SIZE / 144;
+  const ROBOT = 18 * PPI, HALF = ROBOT / 2;
+
+  let state = { x: 72, y: 72, h: 0, fl: 0, fr: 0, bl: 0, br: 0, claw: 0, telemetry: {} };
+  window.__state = state; window.__status = "connecting";
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function wheelColor(p) {
+    const a = Math.min(1, Math.abs(p));
+    return p >= 0 ? `rgba(70,209,122,${0.25 + 0.6 * a})` : `rgba(255,93,93,${0.25 + 0.6 * a})`;
+  }
+  function drawField() {
+    for (let r = 0; r < TILES; r++) for (let c = 0; c < TILES; c++) {
+      ctx.fillStyle = (r + c) % 2 ? "#13161c" : "#171b22";
+      ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
+    }
+    ctx.strokeStyle = "#262c37"; ctx.lineWidth = 1;
+    for (let i = 1; i < TILES; i++) {
+      ctx.beginPath(); ctx.moveTo(i * TILE, 0); ctx.lineTo(i * TILE, SIZE); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * TILE); ctx.lineTo(SIZE, i * TILE); ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(78,161,255,.16)"; ctx.fillRect(0, 0, TILE, 7);
+    ctx.fillStyle = "rgba(255,93,93,.16)"; ctx.fillRect(SIZE - TILE, SIZE - 7, TILE, 7);
+    ctx.strokeStyle = "#39414f"; ctx.lineWidth = 3; ctx.strokeRect(1.5, 1.5, SIZE - 3, SIZE - 3);
+  }
+  function drawRobot() {
+    const px = state.x * PPI, py = (144 - state.y) * PPI;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(state.h);
+    ctx.fillStyle = "#243042"; ctx.strokeStyle = "#4ea1ff"; ctx.lineWidth = 2;
+    roundRect(-HALF, -HALF, ROBOT, ROBOT, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#4ea1ff"; ctx.beginPath();
+    ctx.moveTo(0, -HALF + 4); ctx.lineTo(-9, -HALF + 18); ctx.lineTo(9, -HALF + 18); ctx.closePath(); ctx.fill();
+    const ww = 13, wl = 26, inx = HALF - 7, iny = HALF - 16;
+    const wheels = [[-inx,-iny,state.fl],[inx,-iny,state.fr],[-inx,iny,state.bl],[inx,iny,state.br]];
+    for (const [wx, wy, p] of wheels) {
+      ctx.fillStyle = "#11151b"; roundRect(wx - ww/2, wy - wl/2, ww, wl, 3); ctx.fill();
+      const h = (wl - 6) * Math.min(1, Math.abs(p));
+      ctx.fillStyle = wheelColor(p);
+      ctx.fillRect(wx - ww/2 + 2, p >= 0 ? wy - h : wy, ww - 4, h);
+    }
+    // claw at the nose: two fingers that spread open as the servo position rises (0=closed, 1=open)
+    const open = Math.max(0, Math.min(1, state.claw || 0));
+    const spread = 3 + open * 9;
+    ctx.strokeStyle = "#f5b14c"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-3, -HALF - 1); ctx.lineTo(-spread, -HALF - 11);
+    ctx.moveTo(3, -HALF - 1); ctx.lineTo(spread, -HALF - 11);
+    ctx.stroke();
+    // touch sensor: light up the front bumper red while it's pressed against a wall
+    if (state.touch) {
+      ctx.strokeStyle = "#ff5d5d"; ctx.lineWidth = 4; ctx.lineCap = "round";
+      ctx.shadowColor = "#ff5d5d"; ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(-HALF + 5, -HALF); ctx.lineTo(HALF - 5, -HALF);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    // distance sensor: a cyan beam from the nose to the wall ahead (distance lesson only)
+    if (current && current.id === "distance" && typeof state.dist === "number") {
+      const beam = Math.max(0, state.dist) * PPI; // inches ahead -> px, forward from the nose
+      ctx.strokeStyle = "rgba(78,209,196,0.75)"; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(0, -HALF); ctx.lineTo(0, -HALF - beam); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(78,209,196,0.95)"; ctx.fillRect(-6, -HALF - beam - 1.5, 12, 3); // tick at the wall
+    }
+    ctx.restore();
+  }
+  function render() { ctx.clearRect(0, 0, SIZE, SIZE); drawField(); drawRobot(); requestAnimationFrame(render); }
+  requestAnimationFrame(render);
+
+  function renderTelemetry(t) {
+    const keys = Object.keys(t || {});
+    if (!keys.length) { teleEl.innerHTML = '<span style="color:var(--muted)">— no telemetry —</span>'; return; }
+    teleEl.innerHTML = keys.map(k =>
+      `<div class="row"><span class="k">${esc(k)}</span><span class="v">${esc(String(t[k]))}</span></div>`).join("");
+  }
+
+  function setStatus(text, cls) {
+    statusEl.textContent = text;
+    statusEl.className = "pill" + (cls ? " " + cls : "");
+    window.__status = text;
+  }
+
+  // ---- Render a grade result ----
+  function renderGrade(m) {
+    if (m.error) { diagEl.innerHTML = `<div class="err">${esc(m.error)}</div>`; return; }
+    if (m.compileError) {
+      setStatus("compile error", "error");
+      diagEl.innerHTML = (m.compileError || []).map(d =>
+        `<div class="err">${esc(d.file)}:${d.line}: ${esc(d.kind)}: ${esc(d.message)}</div>`).join("");
+      return;
+    }
+    const head = m.passed
+      ? `<div class="ok">✓ Lesson passed — nice work!</div>`
+      : m.runtimeError
+        ? `<div class="err">Runtime error: ${esc(m.runtimeError)}</div>`
+        : `<div class="err">Not yet — here's what to fix:</div>`;
+    const rows = (m.results || []).map(r => {
+      let h = `<div class="${r.pass ? "ok" : "err"}">${r.pass ? "✓" : "✗"} ${esc(r.label)}</div>`;
+      if (!r.pass) h += `<div class="hint">↳ ${esc(r.hint)}</div>`;
+      return h;
+    }).join("");
+    diagEl.innerHTML = head + rows;
+    setStatus(m.passed ? "passed ✓" : "keep trying", m.passed ? "passed" : "error");
+    if (m.passed && m.lessonId) { progress[m.lessonId] = { ...(progress[m.lessonId] || {}), passed: true }; refreshLessonOptions(); showDone(); }
+    window.__lastGrade = m;
+  }
+
+  // ---- Lesson-complete banner + telemetry spotlight ----
+  function showDone() {
+    if (!current) return;
+    const ordered = [...lessons].sort((a, b) => a.order - b.order);
+    const i = ordered.findIndex(l => l.id === current.id);
+    const next = i >= 0 ? ordered[i + 1] : null;
+    const tip = current.id === "telemetry"
+      ? "You made the robot talk back to the Driver Station! Try changing the message in your code and Run again to watch the Telemetry panel update."
+      : "Your code passed every check.";
+    doneBanner.innerHTML = `<div class="done-emoji">🎉</div>
+      <div class="done-main"><div class="done-title">Lesson complete — ${esc(current.title)}!</div><div class="done-sub">${esc(tip)}</div></div>
+      <div class="done-actions"><a class="done-btn primary" href="lesson.html">← Back to Lessons</a>${next ? `<a class="done-btn" href="lesson.html?id=${next.id}">Next: ${esc(next.title)} →</a>` : ""}</div>`;
+    doneBanner.style.display = "";
+    doneBanner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function hideDone() { doneBanner.style.display = "none"; }
+  function spotlightTelemetry(t) {
+    if (current && current.id === "telemetry" && t && Object.keys(t).length) {
+      telePanel.classList.add("glow");
+      teleTip.style.display = "";
+      teleTip.innerHTML = "👈 That's your code talking to the Driver Station! Change the message in your code and Run again to see it update here.";
+    }
+  }
+
+  // ---- WebSocket ----
+  let ws = null, running = false;
+  function connect() {
+    ws = new WebSocket(`ws://${location.host}/ws`);
+    ws.onopen = () => { setStatus("ready", ""); if (student) ws.send(JSON.stringify({ type: "hello", student: student.id })); };
+    ws.onclose = () => { setStatus("disconnected", "error"); setRunning(false); };
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.type === "state") {
+        state = m; window.__state = state;
+        renderTelemetry(m.telemetry);
+        spotlightTelemetry(m.telemetry);
+      } else if (m.type === "status") {
+        if (m.state === "compiling") setStatus("compiling…", "compiling");
+        else if (m.state === "grading") setStatus("checking…", "grading");
+        else if (m.state === "running") { setStatus("running: " + (m.className||""), "running"); setRunning(true); diagEl.innerHTML = '<span class="ok">Compiled ✓ — running. Drive with WASD + QE.</span>'; }
+        else if (m.state === "ended" || m.state === "stopped") { setStatus(m.state, ""); setRunning(false); telePanel.classList.remove("glow"); }
+      } else if (m.type === "compileError") {
+        setStatus("compile error", "error"); setRunning(false);
+        diagEl.innerHTML = (m.diagnostics||[]).map(d =>
+          `<div class="err">${esc(d.file)}:${d.line}: ${esc(d.kind)}: ${esc(d.message)}</div>`).join("") || '<div class="err">Compile failed.</div>';
+      } else if (m.type === "gradeResult") {
+        setRunning(false);
+        renderGrade(m);
+      } else if (m.type === "tutorToken") {
+        tutorAppend(m.text);
+      } else if (m.type === "tutorDone") {
+        tutorDone();
+      } else if (m.type === "tutorError") {
+        tutorError(m.message, m.limited);
+      } else if (m.type === "runtimeError" || m.type === "timeout" || m.type === "error") {
+        setStatus("runtime error", "error");
+        diagEl.innerHTML = `<div class="err">${esc(m.message || "error")}</div>`;
+      }
+    };
+  }
+  function setRunning(on) { running = on; runBtn.disabled = on; stopBtn.disabled = !on; simLive.classList.toggle("on", on); }
+
+  runBtn.onclick = () => {
+    if (!ws || ws.readyState !== 1) return;
+    hideDone();
+    pushSave();
+    showTab("sim");                       // jump to the sim so the student sees the robot react
+    diagEl.textContent = "Compiling…";
+    ws.send(JSON.stringify({ type: "run", source: codeEl.value }));
+  };
+  checkBtn.onclick = () => {
+    if (!ws || ws.readyState !== 1 || !current) return;
+    hideDone();
+    diagEl.textContent = "Checking your code against the lesson goals…";
+    ws.send(JSON.stringify({ type: "grade", lessonId: current.id, source: codeEl.value }));
+  };
+  stopBtn.onclick = () => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "stop" })); };
+
+  // ---- Tutor chat (Haiku) ----
+  const chatEl = document.getElementById("chat");
+  const chatInput = document.getElementById("chatInput");
+  const askBtn = document.getElementById("askBtn");
+  const tutorHistory = [];
+  let botEl = null, botText = "", lastQ = "";
+
+  function addMsg(text, cls) {
+    const d = document.createElement("div");
+    d.className = "msg " + cls;
+    d.textContent = text;
+    chatEl.appendChild(d);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    return d;
+  }
+  function renderBot(t) { return mdInline(esc(t)).replace(/\n/g, "<br>"); }
+  function tutorAppend(t) {
+    if (!botEl) { botEl = addMsg("", "bot"); botText = ""; }
+    botText += t;
+    botEl.innerHTML = renderBot(botText);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+  function tutorDone() {
+    if (lastQ) tutorHistory.push({ role: "user", content: lastQ });
+    if (botText) tutorHistory.push({ role: "assistant", content: botText });
+    botEl = null; botText = ""; askBtn.disabled = false;
+  }
+  function tutorError(msg, limited) {
+    if (botEl) { botEl.className = "msg bot err"; botEl.textContent = "⚠ " + msg; }
+    else addMsg("⚠ " + msg, "bot err");
+    botEl = null; botText = "";
+    if (limited) { askBtn.disabled = true; setTimeout(() => { askBtn.disabled = false; }, 6000); }
+    else { askBtn.disabled = false; }
+  }
+  function ask() {
+    const q = chatInput.value.trim();
+    if (!q || !ws || ws.readyState !== 1) return;
+    addMsg(q, "me");
+    chatInput.value = ""; lastQ = q; askBtn.disabled = true; botEl = null; botText = "";
+    ws.send(JSON.stringify({
+      type: "tutor",
+      lessonId: current ? current.id : undefined,
+      code: codeEl.value,
+      output: (diagEl.innerText || "").slice(0, 600),
+      question: q,
+      history: tutorHistory.slice(-6),
+    }));
+  }
+  askBtn.onclick = ask;
+  chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); ask(); } });
+
+  // ---- Keyboard → gamepad ----
+  const keys = new Set();
+  const DRIVE_KEYS = ["w","a","s","d","q","e"];
+  // Drive only when not typing in a text field — otherwise w/a/s/d/q/e get stolen from inputs (name box, etc.)
+  addEventListener("keydown", (e) => { const t = e.target; if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return; const k = e.key.toLowerCase(); if (DRIVE_KEYS.includes(k)) { keys.add(k); e.preventDefault(); } });
+  addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if (DRIVE_KEYS.includes(k)) keys.delete(k); });
+  function gamepad() {
+    return {
+      lx: (keys.has("d") ? 1 : 0) - (keys.has("a") ? 1 : 0),
+      ly: (keys.has("s") ? 1 : 0) - (keys.has("w") ? 1 : 0),
+      rx: (keys.has("e") ? 1 : 0) - (keys.has("q") ? 1 : 0),
+      ry: 0,
+    };
+  }
+
+  // ---- Real controller (browser Gamepad API) ----
+  // A USB/Bluetooth gamepad — e.g. the Logitech F310 FTC teams use — drives the sim like the
+  // real robot. Standard mapping already matches FTC's axes (left_stick_y is negative up), so
+  // axes feed straight through. Keyboard stays the fallback when no pad is connected.
+  const padStatusEl = document.getElementById("padStatus");
+  let padIndex = null;
+  const dz = (v) => (Math.abs(v) < 0.06 ? 0 : v); // small deadzone for stick drift
+  function showPad(gp) {
+    padStatusEl.textContent = gp
+      ? `🎮 ${gp.id.replace(/\s*\(.*\)\s*$/, "").trim().slice(0, 40)} — left stick drives, right stick turns`
+      : "🔌 No controller — using keyboard. Plug in a gamepad and press a button to use it.";
+  }
+  addEventListener("gamepadconnected", (e) => { padIndex = e.gamepad.index; showPad(e.gamepad); });
+  addEventListener("gamepaddisconnected", (e) => { if (e.gamepad.index === padIndex) { padIndex = null; showPad(null); } });
+  function readPad() {
+    if (padIndex === null || !navigator.getGamepads) return null;
+    const gp = navigator.getGamepads()[padIndex];
+    if (!gp) return null;
+    const a = gp.axes;
+    return { lx: dz(a[0] || 0), ly: dz(a[1] || 0), rx: dz(a[2] || 0), ry: dz(a[3] || 0) };
+  }
+  function readInput() { return readPad() || gamepad(); } // controller wins when present
+
+  setInterval(() => {
+    if (running && ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "gamepad", g1: readInput() }));
+  }, 50);
+  window.__setPad = (i) => { padIndex = i; }; // test hook
+
+  window.__sendKey = (k, down) => { k = k.toLowerCase(); if (down) keys.add(k); else keys.delete(k); };
+  window.__selectLesson = selectLesson;
+
+  // ---- Login + boot ----
+  async function init() {
+    try { progress = await (await fetch("/api/progress?student=" + student.id)).json(); } catch { progress = {}; }
+    whoEl.innerHTML = `👤 <b>${esc(student.name)}</b> · <a id="switchUser">switch</a>`;
+    const sw = document.getElementById("switchUser");
+    if (sw) sw.onclick = () => { localStorage.removeItem("ftcStudent"); location.reload(); };
+    connect();
+    loadLessons();
+  }
+  function showGate() {
+    gateEl.style.display = "flex";
+    const submit = async () => {
+      const name = nameInput.value.trim();
+      if (!name) return;
+      startBtn.disabled = true;
+      try {
+        student = await (await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })).json();
+        if (!student || !student.id) throw new Error("login failed");
+        localStorage.setItem("ftcStudent", JSON.stringify(student));
+        gateEl.style.display = "none";
+        init();
+      } catch { startBtn.disabled = false; nameInput.value = ""; nameInput.placeholder = "Try again — enter your name"; }
+    };
+    startBtn.onclick = submit;
+    nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+    nameInput.focus();
+  }
+  window.__login = (name) => { nameInput.value = name; startBtn.click(); }; // test hook
+
+  if (student && student.id) init(); else showGate();
+})();
+</script>
+</body>
+</html>

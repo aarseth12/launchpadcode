@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FTC Mecanum Sim — POC</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --line: #2a2f3a;
+    --text: #e6e9ef;
+    --muted: #8b93a3;
+    --accent: #4ea1ff;
+    --green: #46d17a;
+    --red: #ff5d5d;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  header {
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .tag {
+    font-size: 12px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px;
+  }
+  .app {
+    display: grid; grid-template-columns: minmax(0, 640px) 1fr;
+    gap: 20px; padding: 20px; align-items: start;
+  }
+  .left { display: flex; flex-direction: column; gap: 12px; }
+  canvas { background: #0b0d11; border: 1px solid var(--line); border-radius: 10px; width: 100%; height: auto; }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted);
+  }
+  .legend b { color: var(--text); font-family: var(--mono); }
+  .right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .panel h2 {
+    margin: 0; font-size: 12px; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--panel-2);
+  }
+  .tele { font-family: var(--mono); font-size: 13px; padding: 12px 14px; }
+  .tele .row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding: 3px 0; }
+  .tele .k { color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tele .v { color: var(--text); flex: none; font-variant-numeric: tabular-nums; }
+  .tele .group { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+  .tele .v.pos { color: var(--green); }
+  .tele .v.neg { color: var(--red); }
+  pre.code {
+    margin: 0; padding: 14px; font-family: var(--mono); font-size: 12.5px; line-height: 1.5;
+    color: #cdd3df; overflow-x: auto; white-space: pre;
+  }
+  .code-note { color: var(--muted); font-size: 12px; padding: 0 14px 12px; }
+  .kbd {
+    font-family: var(--mono); font-size: 12px; background: var(--panel-2);
+    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>FTC Mecanum Drive — Simulator POC</h1>
+    <span class="tag">prototype · physics runs in-browser for now</span>
+  </header>
+
+  <div class="app">
+    <div class="left">
+      <canvas id="field" width="600" height="600"></canvas>
+      <div class="legend">
+        <span><span class="kbd">W</span><span class="kbd">S</span> forward / back</span>
+        <span><span class="kbd">A</span><span class="kbd">D</span> strafe</span>
+        <span><span class="kbd">Q</span><span class="kbd">E</span> turn</span>
+        <span><span class="kbd">R</span> reset</span>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="panel">
+        <h2>Telemetry</h2>
+        <div class="tele" id="tele"></div>
+      </div>
+
+      <div class="panel">
+        <h2>The OpMode this maps to</h2>
+        <pre class="code" id="code"></pre>
+        <div class="code-note">In the real app, the server compiles this with <b>javac</b> against a mock FTC SDK and runs it in a sandbox — students write exactly this.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("field");
+  const ctx = canvas.getContext("2d");
+  const SIZE = 600;                 // field canvas, px (square)
+  const TILES = 6;                  // FTC field is 6x6 foam tiles (12 ft)
+  const TILE = SIZE / TILES;
+  const PPI = SIZE / 144;           // pixels per inch (144" field)
+  const ROBOT = 18 * PPI;           // 18" robot
+  const HALF = ROBOT / 2;
+  const BOUND = HALF * 1.41;        // keep robot roughly inside walls
+  const MAX_LIN = 250;              // px/s at full power (~60 in/s)
+  const MAX_ANG = 2.6;              // rad/s at full power (~150 deg/s)
+
+  // Robot pose in canvas coords. heading: 0 = facing "up" the field, clockwise positive.
+  const start = { x: SIZE * 0.5, y: SIZE * 0.5, h: 0 };
+  let pos = { x: start.x, y: start.y };
+  let heading = start.h;
+
+  const keys = new Set();
+  addEventListener("keydown", e => {
+    const k = e.key.toLowerCase();
+    if (["w","a","s","d","q","e","r"].includes(k)) e.preventDefault();
+    if (k === "r") { pos = { x: start.x, y: start.y }; heading = start.h; return; }
+    keys.add(k);
+  });
+  addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
+
+  // --- The OpMode shown to the student (and faithfully simulated below) ---
+  document.getElementById("code").textContent =
+`@TeleOp(name = "Mecanum Drive")
+public class MecanumDrive extends LinearOpMode {
+    @Override
+    public void runOpMode() {
+        DcMotor fl = hardwareMap.get(DcMotor.class, "frontLeft");
+        DcMotor fr = hardwareMap.get(DcMotor.class, "frontRight");
+        DcMotor bl = hardwareMap.get(DcMotor.class, "backLeft");
+        DcMotor br = hardwareMap.get(DcMotor.class, "backRight");
+
+        // Right-side motors are mirrored, so reverse them
+        fr.setDirection(DcMotorSimple.Direction.REVERSE);
+        br.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        waitForStart();
+        while (opModeIsActive()) {
+            double axial   = -gamepad1.left_stick_y;   // forward (stick up is negative!)
+            double lateral =  gamepad1.left_stick_x;    // strafe
+            double yaw     =  gamepad1.right_stick_x;   // turn
+
+            double denom = Math.max(Math.abs(axial) + Math.abs(lateral) + Math.abs(yaw), 1.0);
+            fl.setPower((axial + lateral + yaw) / denom);
+            fr.setPower((axial - lateral - yaw) / denom);
+            bl.setPower((axial - lateral + yaw) / denom);
+            br.setPower((axial + lateral - yaw) / denom);
+
+            telemetry.addData("heading", Math.toDegrees(heading));
+            telemetry.update();
+        }
+    }
+}`;
+
+  // Live wheel powers (for telemetry + drawing)
+  let power = { fl: 0, fr: 0, bl: 0, br: 0 };
+  let stick = { ly: 0, lx: 0, rx: 0 };
+
+  function step(dt) {
+    // Emulated gamepad. Note left_stick_y is NEGATIVE when pushed up — the real FTC gotcha.
+    const ly = (keys.has("s") ? 1 : 0) + (keys.has("w") ? -1 : 0);
+    const lx = (keys.has("d") ? 1 : 0) + (keys.has("a") ? -1 : 0);
+    const rx = (keys.has("e") ? 1 : 0) + (keys.has("q") ? -1 : 0);
+    stick = { ly, lx, rx };
+
+    const axial = -ly, lateral = lx, yaw = rx;
+    const denom = Math.max(Math.abs(axial) + Math.abs(lateral) + Math.abs(yaw), 1.0);
+
+    // Exactly the student's formula -> the four wheel powers.
+    const fl = (axial + lateral + yaw) / denom;
+    const fr = (axial - lateral - yaw) / denom;
+    const bl = (axial - lateral + yaw) / denom;
+    const br = (axial + lateral - yaw) / denom;
+    power = { fl, fr, bl, br };
+
+    // Recover body motion FROM the wheel powers (true inverse kinematics),
+    // so normalization scales speed just like it does on a real robot.
+    const vF = (fl + fr + bl + br) / 4;   // forward
+    const vS = (fl - fr - bl + br) / 4;   // strafe (right +)
+    const w  = (fl - fr + bl - br) / 4;   // yaw (cw +)
+
+    heading += w * MAX_ANG * dt;
+    const fwd   = { x: Math.sin(heading), y: -Math.cos(heading) };
+    const right = { x: Math.cos(heading), y:  Math.sin(heading) };
+    pos.x += (vF * fwd.x + vS * right.x) * MAX_LIN * dt;
+    pos.y += (vF * fwd.y + vS * right.y) * MAX_LIN * dt;
+
+    pos.x = Math.max(BOUND, Math.min(SIZE - BOUND, pos.x));
+    pos.y = Math.max(BOUND, Math.min(SIZE - BOUND, pos.y));
+  }
+
+  function drawField() {
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    for (let r = 0; r < TILES; r++) {
+      for (let c = 0; c < TILES; c++) {
+        ctx.fillStyle = (r + c) % 2 ? "#13161c" : "#171b22";
+        ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
+      }
+    }
+    ctx.strokeStyle = "#262c37"; ctx.lineWidth = 1;
+    for (let i = 1; i < TILES; i++) {
+      ctx.beginPath(); ctx.moveTo(i * TILE, 0); ctx.lineTo(i * TILE, SIZE); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * TILE); ctx.lineTo(SIZE, i * TILE); ctx.stroke();
+    }
+    // alliance corner accents
+    ctx.fillStyle = "rgba(78,161,255,.18)"; ctx.fillRect(0, 0, TILE, 8);
+    ctx.fillStyle = "rgba(255,93,93,.18)"; ctx.fillRect(SIZE - TILE, SIZE - 8, TILE, 8);
+    // perimeter wall
+    ctx.strokeStyle = "#39414f"; ctx.lineWidth = 3;
+    ctx.strokeRect(1.5, 1.5, SIZE - 3, SIZE - 3);
+  }
+
+  function wheelColor(p) {
+    const a = Math.min(1, Math.abs(p));
+    return p >= 0 ? `rgba(70,209,122,${0.25 + 0.6 * a})` : `rgba(255,93,93,${0.25 + 0.6 * a})`;
+  }
+
+  function drawRobot() {
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    ctx.rotate(heading);
+
+    // chassis
+    ctx.fillStyle = "#243042";
+    ctx.strokeStyle = "#4ea1ff"; ctx.lineWidth = 2;
+    roundRect(-HALF, -HALF, ROBOT, ROBOT, 8); ctx.fill(); ctx.stroke();
+
+    // nose (forward = up in local frame)
+    ctx.fillStyle = "#4ea1ff";
+    ctx.beginPath();
+    ctx.moveTo(0, -HALF + 4); ctx.lineTo(-9, -HALF + 18); ctx.lineTo(9, -HALF + 18);
+    ctx.closePath(); ctx.fill();
+
+    // wheels with power bars
+    const ww = 13, wl = 26, inx = HALF - 7, iny = HALF - 16;
+    const wheels = [
+      { x: -inx, y: -iny, p: power.fl },
+      { x:  inx, y: -iny, p: power.fr },
+      { x: -inx, y:  iny, p: power.bl },
+      { x:  inx, y:  iny, p: power.br },
+    ];
+    for (const wdef of wheels) {
+      ctx.fillStyle = "#11151b";
+      roundRect(wdef.x - ww / 2, wdef.y - wl / 2, ww, wl, 3); ctx.fill();
+      const h = (wl - 6) * Math.min(1, Math.abs(wdef.p));
+      ctx.fillStyle = wheelColor(wdef.p);
+      const top = wdef.p >= 0 ? wdef.y - h : wdef.y;
+      ctx.fillRect(wdef.x - ww / 2 + 2, wdef.y - (wdef.p >= 0 ? h : 0), ww - 4, h);
+    }
+    ctx.restore();
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  let teleAcc = 0;
+  function drawTelemetry() {
+    const headDeg = ((heading * 180 / Math.PI) % 360 + 360) % 360;
+    const xin = (pos.x / PPI), yin = ((SIZE - pos.y) / PPI);
+    const rows = [
+      ["gamepad1.left_stick_y", stick.ly],
+      ["gamepad1.left_stick_x", stick.lx],
+      ["gamepad1.right_stick_x", stick.rx],
+      ["__group__", "Wheel powers"],
+      ["frontLeft.setPower",  power.fl],
+      ["frontRight.setPower", power.fr],
+      ["backLeft.setPower",   power.bl],
+      ["backRight.setPower",  power.br],
+      ["__group__", "Pose"],
+      ["heading (deg)", headDeg],
+      ["x (in)", xin],
+      ["y (in)", yin],
+    ];
+    let html = "";
+    for (const [k, v] of rows) {
+      if (k === "__group__") { html += `<div class="group"></div><div class="row"><span class="k">${v}</span><span class="v"></span></div>`; continue; }
+      const num = typeof v === "number";
+      const cls = num ? (v > 0.001 ? "pos" : v < -0.001 ? "neg" : "") : "";
+      const val = num ? v.toFixed(2) : v;
+      html += `<div class="row"><span class="k">${k}</span><span class="v ${cls}">${val}</span></div>`;
+    }
+    document.getElementById("tele").innerHTML = html;
+  }
+
+  let last = null;
+  function frame(t) {
+    if (last == null) last = t;
+    let dt = (t - last) / 1000; last = t;
+    if (dt > 0.05) dt = 0.05;       // clamp after tab-away
+    step(dt);
+    drawField();
+    drawRobot();
+    teleAcc += dt;
+    if (teleAcc > 0.06) { drawTelemetry(); teleAcc = 0; }
+    requestAnimationFrame(frame);
+  }
+  drawTelemetry();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

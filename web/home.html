@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Coding Lessons — Choose a Course</title>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e6e9ef; --muted:#8b93a3; --accent:#4ea1ff; --green:#46d17a;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:64px 20px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  .sub { color:var(--muted); font-size:14.5px; margin:0 0 28px; line-height:1.5; }
+  .grid { display:grid; gap:14px; }
+  .card { display:flex; align-items:center; gap:18px; text-decoration:none; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px 22px; transition:border-color .15s, transform .1s; }
+  .card:hover { border-color:var(--accent); transform:translateY(-1px); }
+  .icon { width:52px; height:52px; flex:none; display:grid; place-items:center; border-radius:12px; background:var(--panel2); border:1px solid var(--line); font-size:26px; }
+  .c-title { font-size:17px; font-weight:700; }
+  .c-sub { color:var(--muted); font-size:13px; margin-top:3px; line-height:1.45; }
+  .c-meta { color:var(--muted); font-size:12px; margin-top:6px; font-family:ui-monospace,Menlo,monospace; }
+  .go { margin-left:auto; color:var(--accent); font-size:14px; font-weight:600; white-space:nowrap; }
+  .empty { color:var(--muted); }
+</style>
+</head>
+<body>
+  <main>
+    <h1>Coding Lessons</h1>
+    <p class="sub">Pick a course to start. Your code and progress save as you go — sign in with the same name to pick up where you left off.</p>
+    <div class="grid" id="grid"><div class="empty">Loading courses…</div></div>
+  </main>
+<script>
+(() => {
+  const grid = document.getElementById("grid");
+  const ICON = { ftc: "🤖", python: "🐍" };
+  const HREF = { ftc: "index.html", python: "console.html?course=python" };
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  async function load() {
+    let courses = [];
+    try { courses = await (await fetch("/api/courses")).json(); }
+    catch { grid.innerHTML = '<div class="empty">Could not load courses.</div>'; return; }
+    if (!courses.length) { grid.innerHTML = '<div class="empty">No courses yet.</div>'; return; }
+    grid.innerHTML = courses.map(c => `
+      <a class="card" href="${HREF[c.id] || "index.html"}">
+        <div class="icon">${ICON[c.id] || "📘"}</div>
+        <div>
+          <div class="c-title">${esc(c.title)}</div>
+          <div class="c-sub">${esc(c.subtitle || "")}</div>
+          <div class="c-meta">${esc(c.language)} · ${c.lessonCount} lesson${c.lessonCount === 1 ? "" : "s"}</div>
+        </div>
+        <div class="go">Start →</div>
+      </a>`).join("");
+  }
+  load();
+})();
+</script>
+</body>
+</html>

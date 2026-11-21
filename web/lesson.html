@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FTC Java Tutorial — Lessons</title>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e6e9ef; --muted:#8b93a3; --accent:#4ea1ff; --green:#46d17a; --red:#ff5d5d;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:12px 18px; border-bottom:1px solid var(--line); }
+  header .brand { font-size:15px; font-weight:600; color:var(--text); text-decoration:none; }
+  .spacer { flex:1; }
+  .navlink { font-size:13px; color:var(--accent); text-decoration:none; border:1px solid var(--line); border-radius:7px; padding:6px 11px; white-space:nowrap; }
+  main { max-width:760px; margin:0 auto; padding:22px 18px 64px; }
+  .page-title { font-size:22px; margin:6px 0 16px; }
+  .top { display:flex; align-items:center; gap:14px; margin-bottom:4px; }
+  .top .page-title { margin:0; font-size:19px; }
+  .lesson-card { display:flex; align-items:center; gap:16px; text-decoration:none; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+  .lesson-card:hover { border-color:var(--accent); }
+  .lesson-card .num { width:30px; height:30px; flex:none; display:grid; place-items:center; border-radius:50%; background:var(--panel2); border:1px solid var(--line); font-weight:600; }
+  .lc-title { font-weight:600; font-size:15px; }
+  .lc-sub { color:var(--muted); font-size:12.5px; margin-top:2px; }
+  .lesson-card .go { margin-left:auto; color:var(--accent); font-size:13px; font-weight:600; }
+  .lesson-card .num.done { background:var(--green); border-color:var(--green); color:#06210f; }
+  .lc-badge { font-size:10.5px; font-weight:600; color:var(--green); border:1px solid var(--green); border-radius:99px; padding:1px 7px; margin-left:7px; vertical-align:middle; }
+  .progress { display:flex; align-items:center; gap:12px; margin:14px 0; }
+  .progress .bar { flex:1; height:6px; background:var(--panel2); border-radius:99px; overflow:hidden; }
+  .progress .fill { height:100%; background:var(--accent); transition:width .25s; }
+  .progress .ptext { color:var(--muted); font-size:12.5px; white-space:nowrap; }
+  .stepcard { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px 22px; min-height:210px; }
+  .stepcard .kind { font-size:11px; letter-spacing:.08em; color:var(--accent); font-weight:700; margin-bottom:8px; }
+  .stepcard h2 { font-size:18px; margin:0 0 12px; }
+  .body { font-size:14.5px; line-height:1.6; }
+  .body p { margin:0 0 12px; }
+  .body code, .explain code, .feedback code { font-family:var(--mono); font-size:12.5px; background:var(--panel2); padding:1px 5px; border-radius:4px; }
+  pre.code { background:#0b0d11; border:1px solid var(--line); border-radius:8px; padding:14px; overflow-x:auto; font-family:var(--mono); font-size:12.5px; line-height:1.55; margin:6px 0 14px; color:#cdd3df; }
+  .reflabel { font-size:12px; color:var(--muted); margin:4px 0 2px; }
+  pre.code.ref { max-height:300px; overflow:auto; }
+  .tok-com { color:#6a9955; font-style:italic; }
+  .tok-kw  { color:#569cd6; }
+  .tok-type{ color:#4ec9b0; }
+  .tok-str { color:#ce9178; }
+  .tok-num { color:#b5cea8; }
+  .tok-ann { color:#dcdcaa; }
+  .tok-fn  { color:#dcdcaa; }
+  .legend { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:11px 13px; margin:2px 0 12px; }
+  .legend-title { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .legend-row { display:flex; align-items:baseline; gap:11px; font-size:13px; line-height:1.5; margin:4px 0; }
+  .legend-row code { font-family:var(--mono); font-size:11.5px; background:#0b0d11; border-radius:4px; padding:1px 6px; flex:none; min-width:70px; text-align:center; }
+  .legend-row > span { color:var(--muted); }
+  .legend-row b { color:var(--text); font-weight:600; }
+  .quiz { margin-top:6px; }
+  .quiz-q { margin:0 0 18px; }
+  .quiz-q:last-child { margin-bottom:4px; }
+  .quiz-prompt { font-size:14px; line-height:1.5; margin-bottom:9px; }
+  .quiz-opts { display:flex; flex-direction:column; gap:7px; }
+  .quiz-opt { text-align:left; font:inherit; font-size:13px; color:var(--text); background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:9px 13px; cursor:pointer; transition:border-color .15s; }
+  .quiz-opt:hover:not(:disabled) { border-color:var(--accent); }
+  .quiz-opt:disabled { cursor:default; }
+  .quiz-opt.right { border-color:var(--green); background:rgba(70,209,122,.13); }
+  .quiz-opt.wrong { border-color:var(--red); background:rgba(255,93,93,.10); opacity:.65; }
+  .quiz-fb { font-size:13px; line-height:1.5; margin-top:8px; color:var(--muted); }
+  .quiz-fb .ok { color:var(--green); font-weight:600; }
+  .quiz-fb .no { color:var(--red); }
+  .explain { font-size:13.5px; line-height:1.55; color:var(--muted); border-left:2px solid var(--accent); padding:2px 0 2px 12px; margin-top:10px; }
+  .explain p { margin:0 0 8px; }
+  .diagram { background:#0b0d11; border:1px solid var(--line); border-radius:10px; padding:14px 14px 10px; margin:8px 0 12px; }
+  .diagram svg { width:100%; height:auto; display:block; }
+  .diagcap { font-size:13.5px; line-height:1.55; color:var(--muted); margin-top:2px; }
+  .diagcap strong { color:var(--text); font-weight:600; }
+  .typebox { width:100%; font-family:var(--mono); font-size:13px; background:#0b0d11; color:#cdd3df; border:1px solid var(--line); border-radius:8px; padding:11px; outline:none; resize:vertical; margin:8px 0 10px; }
+  .typebar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .feedback { font-size:13px; }
+  .feedback .ok { color:var(--green); }
+  .feedback .no { color:var(--red); }
+  .feedback .hint { color:var(--muted); }
+  .nav { display:flex; justify-content:space-between; margin-top:16px; }
+  .navbtn { font:inherit; font-size:13px; font-weight:600; border:1px solid var(--line); background:var(--panel2); color:var(--text); border-radius:8px; padding:9px 18px; cursor:pointer; }
+  /* code-step editor: a transparent textarea over a syntax-highlighted <pre> (same trick as console.html) */
+  .ex-wrap { position:relative; margin:8px 0; background:#0b0d11; border:1px solid var(--line); border-radius:8px; }
+  .ex-wrap > pre.ex-hl, .ex-wrap > textarea.ex-editor { margin:0; padding:11px; border:0; font-family:var(--mono); font-size:13px; line-height:1.5; tab-size:4; white-space:pre; }
+  pre.ex-hl { position:absolute; inset:0; z-index:0; overflow:hidden; color:#cdd3df; background:transparent; pointer-events:none; }
+  pre.ex-hl code { font:inherit; color:inherit; background:transparent; padding:0; border:0; border-radius:0; }
+  textarea.ex-editor { position:relative; z-index:1; display:block; width:100%; min-height:150px; resize:vertical; outline:none; background:transparent; color:transparent; caret-color:#e6e9ef; overflow:auto; }
+  .ex-bar { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  .ex-run { background:var(--accent); color:#06121f; border-color:var(--accent); }
+  .ex-console { font-family:var(--mono); font-size:12.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word; background:#0b0d11; border:1px solid var(--line); border-radius:8px; padding:10px 12px; min-height:44px; max-height:260px; overflow:auto; color:#cdd3df; }
+  .ex-console .err { color:var(--red); }
+  .ex-console .sys { color:var(--muted); }
+  .ex-out { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+  .ex-out .ex-console { flex:1 1 220px; }
+  .ex-draw { flex:0 0 300px; max-width:100%; }
+  .navbtn.primary { background:var(--accent); border-color:var(--accent); color:#06122a; }
+  .navbtn.ghost { background:transparent; }
+  .navbtn:disabled { opacity:.4; cursor:default; }
+</style>
+</head>
+<body>
+  <header>
+    <a class="brand" id="brand" href="lesson.html">Lessons</a>
+    <div class="spacer"></div>
+    <a class="navlink" id="openLink" href="index.html">Open ▶</a>
+  </header>
+  <main id="main">Loading…</main>
+
+<script src="highlight.js"></script>
+<script src="draw.js"></script>
+<script>
+(() => {
+  const main = document.getElementById("main");
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+  const COURSE = params.get("course") || "ftc";
+
+  function esc(s){ return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  function unesc(s){ return s.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&amp;/g,"&"); }
+  // inline `code` is syntax-highlighted too: md() already escaped it, so unescape before highlightJava (which re-escapes).
+  function mdInline(x){ return x.replace(/`([^`]+)`/g,(m,c)=>`<code>${hl(unesc(c))}</code>`).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>'); }
+  function md(src){
+    return src.split(/\n\n+/).map(b => {
+      const f = b.match(/^```[a-z]*\n([\s\S]*?)```$/);
+      if (f) return `<pre class="code">${hl(f[1].replace(/\n$/,""))}</pre>`;
+      if (b.startsWith("# ")) return `<h2>${mdInline(esc(b.slice(2)))}</h2>`;
+      return `<p>${mdInline(esc(b)).replace(/\n/g,"<br>")}</p>`;
+    }).join("");
+  }
+  // Forgiving compare: collapse whitespace, then drop spaces *around* punctuation so
+  // `setPower( 0.5 )` matches `setPower(0.5)`. Meaningful spaces (e.g. `DcMotor fl`) stay.
+  const norm = (x) => x.replace(/\s+/g, " ").replace(/\s*([(),;.={}+\-*\/%])\s*/g, "$1").trim();
+
+  // Shown under an example when its step has `legend: true` — explains the syntax colors.
+  const LEGEND_JAVA = `<div class="legend"><div class="legend-title">What the colors mean</div>
+    <div class="legend-row"><code class="tok-com">// note</code><span><b>Comments</b> — notes for humans; the robot ignores them when it runs.</span></div>
+    <div class="legend-row"><code class="tok-kw">while</code><span><b>Keywords</b> — words built into the Java language itself.</span></div>
+    <div class="legend-row"><code class="tok-type">DcMotor</code><span><b>Types</b> — the names of classes (kinds of objects).</span></div>
+    <div class="legend-row"><code class="tok-fn">addData</code><span><b>Methods &amp; @annotations</b> — actions you call, plus labels like <code class="tok-ann">@TeleOp</code>.</span></div>
+    <div class="legend-row"><code class="tok-str">"text"</code><span><b>Strings</b> — literal text inside quotes.</span></div>
+    <div class="legend-row"><code class="tok-num">0.5</code><span><b>Numbers</b> — number values.</span></div></div>`;
+  const LEGEND_PY = `<div class="legend"><div class="legend-title">What the colors mean</div>
+    <div class="legend-row"><code class="tok-com"># note</code><span><b>Comments</b> — notes for humans; Python ignores them when it runs.</span></div>
+    <div class="legend-row"><code class="tok-kw">def</code><span><b>Keywords</b> — words built into Python (like <code class="tok-kw">def</code>, <code class="tok-kw">for</code>, <code class="tok-kw">if</code>, <code class="tok-kw">return</code>).</span></div>
+    <div class="legend-row"><code class="tok-fn">print</code><span><b>Functions</b> — actions you call by name, with <code>( )</code> after them.</span></div>
+    <div class="legend-row"><code class="tok-str">"text"</code><span><b>Strings</b> — literal text inside quotes.</span></div>
+    <div class="legend-row"><code class="tok-num">15</code><span><b>Numbers</b> — number values.</span></div></div>`;
+
+  // Per-course wiring: highlighter, color legend, the practice workspace, and the login key.
+  const COURSES = {
+    ftc:    { hl: window.highlightJava,   legend: LEGEND_JAVA, workspace: "index.html",   storeKey: "ftcStudent", brand: "FTC Java Tutorial", open: "Open sim ▶" },
+    python: { hl: window.highlightPython, legend: LEGEND_PY,   workspace: "console.html", storeKey: "pyStudent",  brand: "Python — Intro",    open: "Open console ▶" },
+  };
+  const CFG = COURSES[COURSE] || COURSES.ftc;
+  const hl = (s) => CFG.hl(s);
+  { const b = document.getElementById("brand"); b.textContent = CFG.brand; b.href = "lesson.html?course=" + COURSE;
+    const o = document.getElementById("openLink"); o.textContent = CFG.open; o.href = CFG.workspace; }
+
+  // ---- Live code runner: runnable `code` steps talk to the same /ws the project console uses ----
+  let ws = null;
+  let activeRunner = null; // (m) => void — the active code step's message handler, if any
+  function connectWS() {
+    if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+    try {
+      ws = new WebSocket(`ws://${location.host}/ws`);
+      ws.onopen = () => {
+        let st; try { st = JSON.parse(localStorage.getItem(CFG.storeKey) || "null"); } catch {}
+        ws.send(JSON.stringify({ type: "hello", student: st && st.id, course: COURSE }));
+      };
+      ws.onmessage = (ev) => { let m; try { m = JSON.parse(ev.data); } catch { return; } if (activeRunner) activeRunner(m); };
+      ws.onclose = () => {}; ws.onerror = () => {};
+    } catch {}
+  }
+  if (COURSE === "python") connectWS();
+
+  let lessons = [], progress = {};
+  async function load() {
+    try { lessons = (await (await fetch("/api/lessons?course=" + COURSE)).json()).sort((a,b) => a.order - b.order); }
+    catch { main.textContent = "Could not load lessons."; return; }
+    try { const st = JSON.parse(localStorage.getItem(CFG.storeKey) || "null"); if (st && st.id) progress = await (await fetch("/api/progress?student=" + st.id)).json(); } catch {}
+    if (!id) renderTOC();
+    else renderLesson(lessons.find((l) => l.id === id));
+  }
+
+  function renderTOC() {
+    main.innerHTML = `<h1 class="page-title">Lessons</h1>` + lessons.map((l) => {
+      const done = !!(progress[l.id] && progress[l.id].passed);
+      return `
+      <a class="lesson-card" href="lesson.html?course=${COURSE}&id=${l.id}">
+        <div class="num${done ? " done" : ""}">${done ? "✓" : l.order}</div>
+        <div>
+          <div class="lc-title">${esc(l.title)}${done ? ` <span class="lc-badge">Completed</span>` : ""}</div>
+          <div class="lc-sub">${esc((l.concepts || []).join("  ·  "))}</div>
+        </div>
+        <div class="go">${done ? "Review →" : "Start →"}</div>
+      </a>`;
+    }).join("");
+  }
+
+  function stepsFor(lesson) {
+    if (lesson.tutorial && lesson.tutorial.length) return lesson.tutorial;
+    return [{ kind: "read", title: lesson.title, body: lesson.instructions }]; // fallback: existing text
+  }
+
+  function renderLesson(lesson) {
+    if (!lesson) { main.innerHTML = `<p>Lesson not found. <a class="navlink" href="lesson.html?course=${COURSE}">← Lessons</a></p>`; return; }
+    const steps = stepsFor(lesson);
+    const total = steps.length;
+    let i = 0;
+    const done = {}; // type-step index → completed
+    const codeState = {}; // code-step index → the student's current editor text (survives Back/Next)
+    const hasPractice = Array.isArray(lesson.checks) && lesson.checks.length > 0;
+    const nextLesson = lessons.find((l) => l.order > lesson.order); // next chapter, if any
+    // Reference pool for type steps: example code, plus "try it" code steps (runnable examples, no checks).
+    const examples = steps
+      .filter((s) => (s.kind === "example" && s.code) || (s.kind === "code" && s.starter && !(s.expect && s.expect.length)))
+      .map((s) => s.code || s.starter);
+    const firstExample = examples.length ? examples[0] : "";
+    const squish = (t) => String(t).replace(/\s+/g, " ").trim();
+    // For a type step, show the example that actually CONTAINS the line being asked (so "find the line" is always true); else fall back to the first example.
+    function refFor(step) {
+      const answers = Array.isArray(step.answer) ? step.answer : step.answer ? [step.answer] : [];
+      for (const code of examples) {
+        const hay = squish(code);
+        if (answers.some((a) => a && hay.includes(squish(a)))) return code;
+      }
+      return firstExample;
+    }
+
+    main.innerHTML = `
+      <div class="top">
+        <a class="navlink" href="lesson.html?course=${COURSE}">← Lessons</a>
+        <h1 class="page-title">${lesson.order}. ${esc(lesson.title)}</h1>
+      </div>
+      <div class="progress"><div class="bar"><div class="fill" id="fill"></div></div><div class="ptext" id="ptext"></div></div>
+      <div class="stepcard" id="stepcard"></div>
+      <div class="nav"><button class="navbtn" id="backBtn">← Back</button><button class="navbtn primary" id="nextBtn">Next →</button></div>`;
+
+    const card = document.getElementById("stepcard");
+    const backBtn = document.getElementById("backBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const fill = document.getElementById("fill");
+    const ptext = document.getElementById("ptext");
+
+    function stepHTML(s, idx) {
+      if (s.kind === "read")
+        return `<div class="kind">CONCEPT</div>${s.title ? `<h2>${esc(s.title)}</h2>` : ""}<div class="body">${md(s.body)}</div>`;
+      if (s.kind === "example")
+        return `<div class="kind">EXAMPLE</div>${s.title ? `<h2>${esc(s.title)}</h2>` : ""}${s.body ? `<div class="body">${md(s.body)}</div>` : ""}<pre class="code">${hl(s.code)}</pre>${s.legend ? CFG.legend : ""}${s.explain ? `<div class="explain">${md(s.explain)}</div>` : ""}`;
+      if (s.kind === "diagram")
+        return `<div class="kind">${esc(s.label || "DIAGRAM")}</div>${s.title ? `<h2>${esc(s.title)}</h2>` : ""}<div class="diagram">${s.svg}</div>${s.caption ? `<div class="diagcap">${md(s.caption)}</div>` : ""}`;
+      if (s.kind === "quiz")
+        return `<div class="kind">CHECK YOURSELF</div>${s.title ? `<h2>${esc(s.title)}</h2>` : ""}${s.intro ? `<div class="body">${md(s.intro)}</div>` : ""}${s.code ? `<pre class="code">${hl(s.code)}</pre>` : ""}<div class="quiz">${s.questions.map((q, qi) => `<div class="quiz-q" data-qi="${qi}"><div class="quiz-prompt">${qi + 1}. ${mdInline(esc(q.q))}</div><div class="quiz-opts">${q.options.map((o, oi) => `<button class="quiz-opt" data-oi="${oi}">${mdInline(esc(o))}</button>`).join("")}</div><div class="quiz-fb"></div></div>`).join("")}</div>`;
+      if (s.kind === "code") {
+        const tryIt = !(s.expect && s.expect.length); // no checks → a runnable example: Run only
+        return `<div class="kind">${tryIt ? "TRY IT — RUN IT" : "YOUR TURN — CODE IT"}</div>${s.title ? `<h2>${esc(s.title)}</h2>` : ""}${s.body ? `<div class="body">${md(s.body)}</div>` : ""}
+          <div class="ex-wrap"><pre class="ex-hl" aria-hidden="true"><code id="exHL"></code></pre><textarea class="ex-editor" id="exEditor" spellcheck="false" wrap="off"></textarea></div>
+          <div class="ex-bar">
+            <button class="navbtn ex-run" id="exRun">▶ Run</button>
+            ${tryIt ? "" : `<button class="navbtn" id="exCheck">Check</button>`}
+            <span class="feedback" id="exFb"></span>
+          </div>
+          <div class="ex-out">
+            ${s.canvas ? `<div class="ex-draw" id="exDraw"></div>` : ""}
+            <div class="ex-console" id="exConsole"><span class="sys">— press ▶ Run to execute your code —</span></div>
+          </div>
+          <div class="explain" id="exExp" style="display:none"></div>`;
+      }
+      // type
+      const ref = refFor(s);
+      return `<div class="kind">TYPE IT OUT</div><div class="body">${md(s.prompt)}</div>
+        ${ref ? `<div class="reflabel">Reference — find the line in the example:</div><pre class="code ref">${hl(ref)}</pre>` : ""}
+        <textarea class="typebox" id="typebox" spellcheck="false" rows="2" placeholder="Type the line here…"></textarea>
+        <div class="typebar">
+          <button class="navbtn" id="checkType">Check</button>
+          <span class="feedback" id="feedback"></span>
+        </div>
+        <div class="explain" id="exp" style="display:none"></div>`;
+    }
+
+    function wire(s, idx) {
+      if (s.kind === "quiz") {
+        const total = s.questions.length;
+        let correct = 0;
+        s.questions.forEach((q, qi) => {
+          const qEl = card.querySelector(`.quiz-q[data-qi="${qi}"]`);
+          const opts = [...qEl.querySelectorAll(".quiz-opt")];
+          const fb = qEl.querySelector(".quiz-fb");
+          const reveal = () => {
+            opts.forEach((o, oi) => { o.disabled = true; if (oi === q.answer) o.classList.add("right"); });
+            fb.innerHTML = `<span class="ok">✓ Correct.</span>${q.explain ? " " + mdInline(esc(q.explain)) : ""}`;
+          };
+          if (done[idx]) { reveal(); correct++; }
+          opts.forEach((opt, oi) => {
+            opt.onclick = () => {
+              if (oi === q.answer) { reveal(); if (++correct >= total) { done[idx] = true; nextBtn.disabled = false; } }
+              else { opt.classList.add("wrong"); opt.disabled = true; fb.innerHTML = '<span class="no">Not quite — try another.</span>'; }
+            };
+          });
+        });
+        return;
+      }
+      if (s.kind === "code") {
+        connectWS();
+        const ed = document.getElementById("exEditor");
+        const runBtn = document.getElementById("exRun");
+        const checkBtn = document.getElementById("exCheck");
+        const fb = document.getElementById("exFb");
+        const con = document.getElementById("exConsole");
+        const exp = document.getElementById("exExp");
+        const drawer = s.canvas ? DrawCanvas(document.getElementById("exDraw")) : null;
+        const exHL = document.getElementById("exHL");
+        const exPre = exHL.parentElement;
+        const syncScroll = () => { exPre.scrollTop = ed.scrollTop; exPre.scrollLeft = ed.scrollLeft; };
+        const syncHL = () => { exHL.innerHTML = hl(ed.value) + "\n"; syncScroll(); };
+        ed.value = (codeState[idx] != null) ? codeState[idx] : (s.starter || "");
+        syncHL();
+        ed.addEventListener("input", () => { codeState[idx] = ed.value; syncHL(); });
+        ed.addEventListener("scroll", syncScroll);
+        ed.addEventListener("paste", (e) => { e.preventDefault(); fb.innerHTML = '<span class="hint">✋ Paste is off — type it yourself.</span>'; });
+        ed.addEventListener("drop", (e) => e.preventDefault());
+        let started = false;
+        const append = (text, cls) => { if (!started) { con.innerHTML = ""; started = true; } const sp = document.createElement("span"); if (cls) sp.className = cls; sp.textContent = text; con.appendChild(sp); con.scrollTop = con.scrollHeight; };
+        const markDone = () => { done[idx] = true; fb.innerHTML = '<span class="ok">✓ Works! Nicely done.</span>'; if (s.explain) { exp.innerHTML = md(s.explain); exp.style.display = ""; } nextBtn.disabled = false; };
+        if (done[idx]) { fb.innerHTML = '<span class="ok">✓ Works! Nicely done.</span>'; nextBtn.disabled = false; if (s.explain) { exp.innerHTML = md(s.explain); exp.style.display = ""; } }
+        activeRunner = (m) => {
+          if (m.type === "started") { con.innerHTML = ""; started = true; }
+          else if (m.type === "draw") { if (drawer) drawer.add(m); }
+          else if (m.type === "stdout") append(m.text);
+          else if (m.type === "stderr") append(m.text, "err");
+          else if (m.type === "runtimeError") append(m.message, "err");
+          else if (m.type === "timeout") append("\n" + m.message, "err");
+          else if (m.type === "exit") append(m.code ? `\n[exited with code ${m.code}]` : "\n[finished]", "sys");
+          else if (m.type === "stepResult" && m.stepId === s.id) {
+            if (m.passed) markDone();
+            else if (m.error) fb.innerHTML = `<span class="no">${esc(m.error)}</span>`;
+            else if (m.runtimeError) fb.innerHTML = '<span class="no">Your code hit an error.</span> <span class="hint">Press ▶ Run to see it in the console.</span>';
+            else { const failed = (m.results || []).find((r) => !r.pass); fb.innerHTML = `<span class="no">Not an exact match to what I checked.</span> <span class="hint">${mdInline(esc((failed && failed.hint) || s.hint || "Compare your output to what the task asks for."))}</span><br><span class="hint">If yours already does what the task asks, you can move on.</span>`; }
+          }
+        };
+        runBtn.onclick = () => {
+          if (!ws || ws.readyState !== 1) { connectWS(); fb.innerHTML = '<span class="hint">Connecting… press Run again in a moment.</span>'; return; }
+          con.innerHTML = ""; started = true; fb.textContent = "";
+          if (drawer) drawer.reset();
+          ws.send(JSON.stringify({ type: "run", source: ed.value }));
+        };
+        if (checkBtn) checkBtn.onclick = () => {
+          if (!ws || ws.readyState !== 1) { connectWS(); fb.innerHTML = '<span class="hint">Connecting… press Check again in a moment.</span>'; return; }
+          fb.innerHTML = '<span class="hint">Running your code… ⏳</span>';
+          ws.send(JSON.stringify({ type: "gradeStep", lessonId: lesson.id, stepId: s.id, source: ed.value }));
+        };
+        return;
+      }
+      if (s.kind !== "type") return;
+      const box = document.getElementById("typebox");
+      const fb = document.getElementById("feedback");
+      const exp = document.getElementById("exp");
+      const accept = () => {
+        done[idx] = true;
+        box.disabled = true;
+        fb.innerHTML = '<span class="ok">✓ Nice — that\'s exactly right.</span>';
+        if (s.explain) { exp.innerHTML = md(s.explain); exp.style.display = ""; }
+        nextBtn.disabled = false;
+      };
+      if (done[idx]) { box.value = s.answer[0]; accept(); }
+
+      // Wrong attempt → ask Haiku (the Coach) for a hint about THIS line, with their attempt.
+      // Falls back to the lesson's static hint if the endpoint/key is unavailable.
+      async function coachHint(attempt) {
+        try {
+          let stId; try { stId = (JSON.parse(localStorage.getItem(CFG.storeKey) || "null") || {}).id; } catch {}
+          const r = await fetch("/api/hint", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: s.prompt, expected: s.answer[0], attempt, student: stId, lessonId: lesson.id, course: COURSE }),
+          });
+          const j = await r.json();
+          if (j && j.hint) return { hint: j.hint, coach: true };
+        } catch {}
+        return { hint: s.hint || "Compare your line to the reference above — something small is off.", coach: false };
+      }
+
+      let pending = false;
+      document.getElementById("checkType").onclick = async () => {
+        if (s.answer.some((a) => norm(a) === norm(box.value))) { accept(); return; }
+        const attempt = box.value.trim();
+        if (!attempt) { fb.innerHTML = '<span class="no">Type the line first, then press Check.</span>'; return; }
+        if (pending) return;
+        pending = true;
+        fb.innerHTML = '<span class="no">Not quite.</span> <span class="hint">Coach is looking at your line… 🤔</span>';
+        const { hint, coach } = await coachHint(attempt);
+        pending = false;
+        const note = coach ? "" : ' <span class="hint">— Coach is busy for a moment; press <b>Check</b> again for specific help.</span>';
+        fb.innerHTML = `<span class="no">Not quite.</span> <span class="hint">${mdInline(esc(hint))}</span>${note}`;
+      };
+      box.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); document.getElementById("checkType").click(); } });
+      // Block paste/drop on the type-it-out box so the student actually types the line out
+      // (the reference is right above to *read*, not copy). The full practice editor still allows paste.
+      box.addEventListener("paste", (e) => { e.preventDefault(); fb.innerHTML = '<span class="hint">✋ Paste is off here — type it out yourself so it sticks.</span>'; });
+      box.addEventListener("drop", (e) => e.preventDefault());
+    }
+
+    function render() {
+      const s = steps[i];
+      ptext.textContent = `Step ${i + 1} of ${total}`;
+      fill.style.width = `${((i + 1) / total) * 100}%`;
+      backBtn.disabled = i === 0;
+      const last = i === total - 1;
+      nextBtn.textContent = !last ? "Next →" : hasPractice ? "Start practice →" : nextLesson ? "Continue →" : "Back to lessons →";
+      // Type drills and quizzes gate Next (their answers are exact/unambiguous). Code exercises do
+      // NOT gate: output-matching is fuzzy, so a correct-but-different solution must never trap a student.
+      nextBtn.disabled = (s.kind === "type" || s.kind === "quiz") && !done[i];
+      activeRunner = null; // detach the previous code step's WS handler before rendering this one
+      card.innerHTML = stepHTML(s, i);
+      wire(s, i);
+      window.__step = i; window.__kind = s.kind;
+    }
+    backBtn.onclick = () => { if (i > 0) { i--; render(); } };
+    nextBtn.onclick = () => {
+      if (i < total - 1) { i++; render(); }
+      else if (hasPractice) location.href = `${CFG.workspace}?lesson=${lesson.id}`;
+      else if (nextLesson) location.href = `lesson.html?course=${COURSE}&id=${nextLesson.id}`;
+      else location.href = `lesson.html?course=${COURSE}`;
+    };
+    window.__goStep = (n) => { i = Math.max(0, Math.min(total - 1, n)); render(); };
+    render();
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+node_modules/
+*.log
+.DS_Store
+
+# secrets — never commit the API key
+.env
+server/.env
+
+# build artifacts
+server/out/
+*.class
+
+# student data (sqlite db + WAL files) — back up by copying server/data/app.db
+server/data/
+
+# local Claude Code / preview config (contains machine-specific paths)
+.claude/

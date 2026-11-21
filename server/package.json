@@ -1,0 +1,17 @@
+{
+  "name": "ftc-tutorial-server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Server for the FTC Java tutorial: sandboxed javac compile-and-run + Haiku tutor proxy.",
+  "scripts": {
+    "demo": "node src/demo.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.106.0",
+    "ws": "^8.21.0"
+  }
+}

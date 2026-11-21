@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Python — Live Console</title>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e6e9ef; --muted:#8b93a3; --accent:#4ea1ff; --green:#46d17a; --red:#ff5d5d; --amber:#f5b14c;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:12px 18px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:15px; margin:0; font-weight:600; white-space:nowrap; }
+  .lesson-select { font:inherit; font-size:13px; background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:7px; padding:6px 10px; }
+  .pill { font-size:12px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:3px 11px; font-family:var(--mono); white-space:nowrap; }
+  .pill.running { color:var(--green); border-color:var(--green); }
+  .pill.compiling, .pill.grading { color:var(--amber); border-color:var(--amber); }
+  .pill.passed { color:var(--green); border-color:var(--green); }
+  .pill.error { color:var(--red); border-color:var(--red); }
+  .spacer { flex:1; }
+  .navlink { font-size:13px; color:var(--accent); text-decoration:none; border:1px solid var(--line); border-radius:7px; padding:6px 11px; white-space:nowrap; }
+  button { font:inherit; font-size:13px; font-weight:600; border:1px solid var(--line); background:var(--panel2); color:var(--text); border-radius:7px; padding:7px 15px; cursor:pointer; }
+  button.run { background:var(--accent); border-color:var(--accent); color:#06122a; }
+  button.check { background:var(--green); border-color:var(--green); color:#06210f; }
+  button:disabled { opacity:.45; cursor:default; }
+  .app { display:grid; grid-template-columns:1fr 580px; gap:16px; padding:16px; align-items:start; }
+  @media (max-width:1200px){ .app { grid-template-columns:1fr; } }
+  .col { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .panel h2 { margin:0; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); padding:9px 13px; border-bottom:1px solid var(--line); background:var(--panel2); }
+  .tabbar { display:flex; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:6px; }
+  .tab { flex:1; appearance:none; border:0; border-radius:7px; background:transparent; color:var(--muted); font-family:inherit; font-size:12.5px; font-weight:600; padding:9px 12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .tab:hover { color:var(--text); }
+  .tab.active { background:var(--panel2); color:var(--text); box-shadow:inset 0 0 0 1px var(--line); }
+  .tab .live-dot { width:7px; height:7px; border-radius:50%; background:var(--red); opacity:0; }
+  .tab .live-dot.on { opacity:1; box-shadow:0 0 7px var(--red); animation:livePulse 1.1s ease-in-out infinite; }
+  @keyframes livePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.82)} }
+  .tabpane { display:none; flex-direction:column; gap:12px; min-width:0; }
+  .tabpane.active { display:flex; }
+  .instructions { padding:12px 14px; font-size:13.5px; line-height:1.5; max-height:600px; overflow:auto; }
+  .instructions h3 { margin:0 0 8px; font-size:15px; }
+  .instructions p { margin:0 0 10px; }
+  .instructions code { font-family:var(--mono); font-size:12px; background:var(--panel2); padding:1px 5px; border-radius:4px; }
+  .instructions pre.md-code { background:#0b0d11; border:1px solid var(--line); border-radius:6px; padding:10px; overflow-x:auto; font-family:var(--mono); font-size:12px; line-height:1.5; margin:0 0 10px; }
+  .tok-com { color:#6a9955; font-style:italic; }
+  .tok-kw  { color:#569cd6; }
+  .tok-type{ color:#4ec9b0; }
+  .tok-str { color:#ce9178; }
+  .tok-num { color:#b5cea8; }
+  .tok-ann { color:#dcdcaa; }
+  .tok-fn  { color:#dcdcaa; }
+  .code-wrap { position:relative; background:#0b0d11; }
+  .code-wrap > pre.code-hl, .code-wrap > textarea#code { margin:0; padding:13px 13px 13px 46px; border:0; font-family:var(--mono); font-size:12.5px; line-height:1.55; tab-size:4; white-space:pre; box-sizing:border-box; }
+  .code-wrap > .gutter { position:absolute; left:0; top:0; bottom:0; width:46px; z-index:2; overflow:hidden; margin:0; padding:13px 10px 13px 0; border:0; border-right:1px solid #1b1f27; box-sizing:border-box; font-family:var(--mono); font-size:12.5px; line-height:1.55; text-align:right; white-space:pre; color:#5a6273; background:#0b0d11; pointer-events:none; user-select:none; -webkit-user-select:none; }
+  pre.code-hl { position:absolute; inset:0; z-index:0; overflow:hidden; color:#cdd3df; background:transparent; pointer-events:none; }
+  pre.code-hl code { font:inherit; color:inherit; background:transparent; padding:0; border:0; border-radius:0; }
+  textarea#code { position:relative; z-index:1; display:block; width:100%; height:380px; resize:vertical; outline:none; background:transparent; color:transparent; caret-color:#e6e9ef; overflow:auto; }
+  .diag { font-family:var(--mono); font-size:12.5px; padding:11px 13px; color:var(--muted); min-height:40px; }
+  .diag .err { color:var(--red); }
+  .diag .ok { color:var(--green); }
+  .diag .hint { color:var(--muted); padding-left:18px; }
+  .console { font-family:var(--mono); font-size:12.5px; line-height:1.5; padding:12px 14px; height:440px; overflow:auto; white-space:pre-wrap; word-break:break-word; background:#0b0d11; }
+  .console .err { color:var(--red); }
+  .console .sys { color:var(--muted); }
+  .console .cursor { color:var(--muted); }
+  .console .input { color:var(--accent); }
+  .draw-host { padding:12px 13px; }
+  #paneConsole.with-draw .console { height:200px; } /* leave room for the drawing above it */
+  .consolebar { display:flex; gap:8px; padding:10px 13px; border-top:1px solid var(--line); }
+  .consolebar input { flex:1; font-family:var(--mono); font-size:12.5px; background:#0b0d11; color:var(--text); border:1px solid var(--line); border-radius:7px; padding:7px 10px; outline:none; }
+  .consolebar input:disabled { opacity:.45; cursor:not-allowed; }
+  .chat { padding:10px 13px; max-height:240px; overflow:auto; display:flex; flex-direction:column; gap:8px; font-size:13px; line-height:1.45; }
+  .chat .chat-hint { color:var(--muted); font-size:12.5px; }
+  .chat .msg { padding:7px 10px; border-radius:8px; max-width:92%; white-space:pre-wrap; word-wrap:break-word; }
+  .chat .me { align-self:flex-end; background:var(--panel2); border:1px solid var(--line); }
+  .chat .bot { align-self:flex-start; background:#10202b; border:1px solid #20455a; }
+  .chat .bot.err { background:#2a1416; border-color:#5a2530; color:#ffd0d0; }
+  .chat .bot code { font-family:var(--mono); font-size:12px; background:#0b0d11; padding:1px 4px; border-radius:4px; }
+  .chatbar { display:flex; gap:8px; padding:10px 13px; border-top:1px solid var(--line); }
+  .chatbar input { flex:1; font:inherit; font-size:13px; background:#0b0d11; color:var(--text); border:1px solid var(--line); border-radius:7px; padding:7px 10px; outline:none; }
+  .gate { position:fixed; inset:0; background:rgba(8,10,14,.86); display:flex; align-items:center; justify-content:center; z-index:50; }
+  .gate-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:24px 26px; width:min(440px,92vw); }
+  .gate-card h2 { margin:0 0 8px; font-size:18px; }
+  .gate-card p { margin:0 0 16px; color:var(--muted); font-size:13.5px; line-height:1.5; }
+  .gate-card input { width:100%; font:inherit; font-size:14px; background:#0b0d11; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:12px; outline:none; }
+  .gate-card button { width:100%; }
+  .who { font-size:12.5px; color:var(--muted); white-space:nowrap; }
+  .who b { color:var(--text); }
+  .who a { color:var(--accent); text-decoration:none; cursor:pointer; }
+  .done-banner { display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin:0 16px; padding:14px 18px; background:linear-gradient(90deg, rgba(70,209,122,.16), rgba(78,161,255,.10)); border:1px solid var(--green); border-radius:12px; }
+  .done-emoji { font-size:26px; line-height:1; }
+  .done-main { flex:1; min-width:200px; }
+  .done-title { font-size:16px; font-weight:700; }
+  .done-sub { font-size:13px; color:var(--muted); margin-top:3px; line-height:1.45; }
+  .done-actions { display:flex; gap:9px; flex-wrap:wrap; }
+  a.done-btn { font-size:13px; font-weight:600; text-decoration:none; border:1px solid var(--line); background:var(--panel2); color:var(--text); border-radius:8px; padding:8px 14px; white-space:nowrap; }
+  a.done-btn.primary { background:var(--green); border-color:var(--green); color:#06210f; }
+</style>
+<script src="highlight.js"></script>
+<script src="draw.js"></script>
+</head>
+<body>
+  <div class="gate" id="loginGate" style="display:none">
+    <div class="gate-card">
+      <h2>Welcome to Python — Intro</h2>
+      <p>Enter your name to start. Your code and progress save automatically — sign in with the same name on any computer to pick up where you left off.</p>
+      <input id="nameInput" placeholder="Your name" autocomplete="off" maxlength="40" />
+      <button class="run" id="startBtn">Start →</button>
+    </div>
+  </div>
+  <header>
+    <h1 id="courseTitle">Python — Intro</h1>
+    <a class="navlink" href="/">← Courses</a>
+    <a class="navlink" href="lesson.html?course=python">📚 Lessons</a>
+    <select class="lesson-select" id="lessonSelect"></select>
+    <span class="pill" id="status">connecting…</span>
+    <div class="spacer"></div>
+    <button class="run" id="runBtn">▶ Run</button>
+    <button class="check" id="checkBtn">✓ Check</button>
+    <button id="stopBtn" disabled>■ Stop</button>
+    <span class="who" id="who"></span>
+  </header>
+
+  <div id="doneBanner" class="done-banner" style="display:none"></div>
+
+  <div class="app">
+    <div class="col">
+      <div class="panel">
+        <h2 id="fileName">main.py</h2>
+        <div class="code-wrap">
+          <div class="gutter" id="gutter" aria-hidden="true"></div>
+          <pre class="code-hl" aria-hidden="true"><code id="codeHL"></code></pre>
+          <textarea id="code" spellcheck="false" wrap="off"></textarea>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Output</h2>
+        <div class="diag" id="diag">Pick a lesson, write code, then <b>Run</b> to see the console or <b>Check</b> to grade.</div>
+      </div>
+      <div class="panel">
+        <h2>Tutor — Haiku</h2>
+        <div class="chat" id="chat"><div class="chat-hint">Stuck? Ask for a hint — the tutor can see your code, the lesson, and the latest output.</div></div>
+        <div class="chatbar">
+          <input id="chatInput" type="text" placeholder="Ask the tutor a question…" autocomplete="off" />
+          <button class="check" id="askBtn">Ask</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="tabbar" role="tablist">
+        <button class="tab active" id="tabLesson" role="tab" aria-selected="true">Lesson</button>
+        <button class="tab" id="tabConsole" role="tab" aria-selected="false">Console <span class="live-dot" id="liveDot"></span></button>
+      </div>
+      <div class="tabpane active" id="paneLesson" role="tabpanel" aria-labelledby="tabLesson">
+        <div class="panel"><div class="instructions" id="instructions">Loading lessons…</div></div>
+      </div>
+      <div class="tabpane" id="paneConsole" role="tabpanel" aria-labelledby="tabConsole">
+        <div class="panel" id="drawPanel" style="display:none">
+          <h2>Drawing</h2>
+          <div class="draw-host" id="drawHost"></div>
+        </div>
+        <div class="panel">
+          <h2>Console</h2>
+          <div class="console" id="console"><span class="sys">— not running — press ▶ Run to execute your program —</span></div>
+          <div class="consolebar"><input id="stdinInput" type="text" placeholder="type your answer here, then press Enter…" autocomplete="off" spellcheck="false" disabled /></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const codeEl = document.getElementById("code");
+  const codeHL = document.getElementById("codeHL");
+  const codePre = codeHL.parentElement;
+  const gutterEl = document.getElementById("gutter");
+
+  let gutterLineCount = -1;
+  function renderGutter() {
+    const n = codeEl.value.split("\n").length;
+    if (n === gutterLineCount) return;
+    gutterLineCount = n;
+    let s = "1";
+    for (let i = 2; i <= n; i++) s += "\n" + i;
+    gutterEl.textContent = s;
+  }
+  function syncScroll() { codePre.scrollTop = gutterEl.scrollTop = codeEl.scrollTop; codePre.scrollLeft = codeEl.scrollLeft; }
+  function syncHL() { codeHL.innerHTML = highlightPython(codeEl.value) + "\n"; renderGutter(); syncScroll(); }
+  codeEl.addEventListener("input", syncHL);
+  codeEl.addEventListener("scroll", syncScroll);
+  // Paste is OFF in the project editor too — students type their own code so it sticks
+  // (mirrors the type-it-out drills). One paste handler covers Cmd/Ctrl+V, right-click Paste, and middle-click.
+  codeEl.addEventListener("paste", (e) => {
+    e.preventDefault();
+    const pText = statusEl.textContent, pCls = statusEl.className;
+    statusEl.textContent = "✋ Paste is off — type it yourself.";
+    statusEl.className = "pill";
+    setTimeout(() => { statusEl.textContent = pText; statusEl.className = pCls; }, 2500);
+  });
+  codeEl.addEventListener("drop", (e) => e.preventDefault());
+
+  const statusEl = document.getElementById("status");
+  const diagEl = document.getElementById("diag");
+  const consoleEl = document.getElementById("console");
+  const stdinInput = document.getElementById("stdinInput");
+  const doneBanner = document.getElementById("doneBanner");
+  const runBtn = document.getElementById("runBtn");
+  const checkBtn = document.getElementById("checkBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const instrEl = document.getElementById("instructions");
+  const selectEl = document.getElementById("lessonSelect");
+
+  const tabLesson = document.getElementById("tabLesson");
+  const tabConsole = document.getElementById("tabConsole");
+  const paneLesson = document.getElementById("paneLesson");
+  const paneConsole = document.getElementById("paneConsole");
+  const liveDot = document.getElementById("liveDot");
+  function showTab(which) {
+    const con = which === "console";
+    tabConsole.classList.toggle("active", con); tabConsole.setAttribute("aria-selected", String(con));
+    tabLesson.classList.toggle("active", !con); tabLesson.setAttribute("aria-selected", String(!con));
+    paneConsole.classList.toggle("active", con);
+    paneLesson.classList.toggle("active", !con);
+  }
+  tabLesson.onclick = () => showTab("lesson");
+  tabConsole.onclick = () => showTab("console");
+
+  // ---- Drawing canvas (the `draw` module): shown for canvas lessons, or as soon as a program draws ----
+  const drawPanel = document.getElementById("drawPanel");
+  const drawer = DrawCanvas(document.getElementById("drawHost"));
+  function showDraw(on) {
+    drawPanel.style.display = on ? "" : "none";
+    paneConsole.classList.toggle("with-draw", on);
+    if (on) drawer.redraw();
+  }
+
+  const gateEl = document.getElementById("loginGate");
+  const nameInput = document.getElementById("nameInput");
+  const startBtn = document.getElementById("startBtn");
+  const whoEl = document.getElementById("who");
+
+  const COURSE = "python";
+  const STORE_KEY = "pyStudent";
+  let student = null;
+  try { student = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); } catch { }
+  let progress = {};
+
+  function esc(s){ return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  function unesc(s){ return s.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&amp;/g,"&"); }
+  function mdInline(x){ return x.replace(/`([^`]+)`/g,(m,c)=>`<code>${highlightPython(unesc(c))}</code>`).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>'); }
+  function md(src){
+    return src.split(/\n\n+/).map(b => {
+      const f = b.match(/^```[a-z]*\n([\s\S]*?)```$/);
+      if (f) return `<pre class="md-code">${highlightPython(f[1].replace(/\n$/,""))}</pre>`;
+      if (b.startsWith("# ")) return `<h3>${mdInline(esc(b.slice(2)))}</h3>`;
+      return `<p>${mdInline(esc(b)).replace(/\n/g,"<br>")}</p>`;
+    }).join("");
+  }
+
+  // ---- Lessons ----
+  let lessons = [], current = null;
+  function refreshLessonOptions() {
+    const practice = lessons.filter(l => Array.isArray(l.checks) && l.checks.length);
+    const cur = selectEl.value;
+    selectEl.innerHTML = practice.map(l => `<option value="${l.id}">${progress[l.id] && progress[l.id].passed ? "✓ " : ""}${l.order}. ${esc(l.title)}</option>`).join("");
+    if (cur) selectEl.value = cur;
+  }
+  async function loadLessons() {
+    try {
+      lessons = (await (await fetch("/api/lessons?course=" + COURSE)).json()).sort((a,b) => a.order - b.order);
+    } catch (e) { instrEl.textContent = "Could not load lessons."; return; }
+    refreshLessonOptions();
+    const practice = lessons.filter(l => Array.isArray(l.checks) && l.checks.length);
+    if (!practice.length) { instrEl.textContent = "No lessons yet."; return; }
+    const want = new URLSearchParams(location.search).get("lesson");
+    selectLesson(practice.some(l => l.id === want) ? want : practice[0].id);
+  }
+  function selectLesson(id) {
+    current = lessons.find(l => l.id === id);
+    if (!current) return;
+    selectEl.value = id;
+    hideDone();
+    showTab("lesson");
+    instrEl.innerHTML = md(current.instructions);
+    const saved = progress[id] && progress[id].code;
+    codeEl.value = (saved != null && saved !== "") ? saved : (current.starterCode || "");
+    syncHL();
+    diagEl.innerHTML = progress[id] && progress[id].passed
+      ? '<div class="ok">✓ You passed this lesson. Edit and re-check anytime.</div>'
+      : "Write your code, then <b>Run</b> to see the console or <b>Check</b> to grade.";
+    resetConsole();
+    drawer.reset();
+    showDraw(!!current.canvas);
+  }
+  selectEl.onchange = () => selectLesson(selectEl.value);
+
+  // ---- Autosave ----
+  let saveTimer = null;
+  function pushSave() { if (student && current && ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "save", lessonId: current.id, code: codeEl.value })); }
+  codeEl.addEventListener("input", () => {
+    if (current) progress[current.id] = { ...(progress[current.id] || {}), code: codeEl.value };
+    clearTimeout(saveTimer); saveTimer = setTimeout(pushSave, 1200);
+  });
+
+  // ---- Console ----
+  function resetConsole() { consoleEl.innerHTML = '<span class="sys">— not running — press ▶ Run to execute your program —</span>'; consoleEl.dataset.started = ""; }
+  function consoleClear() { consoleEl.innerHTML = ""; consoleEl.dataset.started = "1"; }
+  function consoleAppend(text, cls) {
+    if (!consoleEl.dataset.started) consoleClear();
+    const span = document.createElement("span");
+    if (cls) span.className = cls;
+    span.textContent = text;
+    consoleEl.appendChild(span);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  function setStatus(text, cls) {
+    statusEl.textContent = text;
+    statusEl.className = "pill" + (cls ? " " + cls : "");
+    window.__status = text;
+  }
+
+  // ---- Grade result ----
+  function renderGrade(m) {
+    if (m.error) { diagEl.innerHTML = `<div class="err">${esc(m.error)}</div>`; return; }
+    const head = m.passed
+      ? `<div class="ok">✓ Lesson passed — nice work!</div>`
+      : m.runtimeError
+        ? `<div class="err">Your program hit an error:</div><div class="hint">${esc(m.runtimeError).slice(0,600)}</div>`
+        : `<div class="err">Not yet — here's what to fix:</div>`;
+    const rows = (m.results || []).map(r => {
+      let h = `<div class="${r.pass ? "ok" : "err"}">${r.pass ? "✓" : "✗"} ${esc(r.label)}</div>`;
+      if (!r.pass) h += `<div class="hint">↳ ${esc(r.hint)}</div>`;
+      return h;
+    }).join("");
+    diagEl.innerHTML = head + rows;
+    setStatus(m.passed ? "passed ✓" : "keep trying", m.passed ? "passed" : "error");
+    if (m.passed && m.lessonId) { progress[m.lessonId] = { ...(progress[m.lessonId] || {}), passed: true }; refreshLessonOptions(); showDone(); }
+    window.__lastGrade = m;
+  }
+
+  function showDone() {
+    if (!current) return;
+    const ordered = [...lessons].sort((a, b) => a.order - b.order);
+    const i = ordered.findIndex(l => l.id === current.id);
+    const next = i >= 0 ? ordered[i + 1] : null;
+    doneBanner.innerHTML = `<div class="done-emoji">🎉</div>
+      <div class="done-main"><div class="done-title">Lesson complete — ${esc(current.title)}!</div><div class="done-sub">Your code passed every check.</div></div>
+      <div class="done-actions">${next ? `<a class="done-btn primary" href="console.html?lesson=${next.id}">Next: ${esc(next.title)} →</a>` : `<a class="done-btn primary" href="/">← Courses</a>`}</div>`;
+    doneBanner.style.display = "";
+    doneBanner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function hideDone() { doneBanner.style.display = "none"; }
+
+  // ---- WebSocket ----
+  let ws = null, running = false;
+  function connect() {
+    ws = new WebSocket(`ws://${location.host}/ws`);
+    ws.onopen = () => { setStatus("ready", ""); if (student) ws.send(JSON.stringify({ type: "hello", student: student.id, course: COURSE })); };
+    ws.onclose = () => { setStatus("disconnected", "error"); setRunning(false); };
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.type === "draw") { if (drawPanel.style.display === "none") showDraw(true); drawer.add(m); }
+      else if (m.type === "stdout") { consoleAppend(m.text); }
+      else if (m.type === "stderr") { consoleAppend(m.text, "err"); }
+      else if (m.type === "started") { consoleClear(); }
+      else if (m.type === "runtimeError") { consoleAppend(m.message, "err"); diagEl.innerHTML = '<div class="err">Your program hit an error — see the Console.</div>'; }
+      else if (m.type === "timeout") { consoleAppend("\n" + m.message, "err"); }
+      else if (m.type === "exit") { consoleAppend(m.code ? `\n[program exited with code ${m.code}]` : "\n[program finished]", "sys"); }
+      else if (m.type === "status") {
+        if (m.state === "compiling") setStatus("starting…", "compiling");
+        else if (m.state === "grading") setStatus("checking…", "grading");
+        else if (m.state === "running") { setStatus("running", "running"); setRunning(true); diagEl.innerHTML = '<span class="ok">Running — see the Console tab. ▶</span>'; }
+        else if (m.state === "ended" || m.state === "stopped") { setStatus(m.state, ""); setRunning(false); }
+      } else if (m.type === "gradeResult") { setRunning(false); renderGrade(m); }
+      else if (m.type === "tutorToken") { tutorAppend(m.text); }
+      else if (m.type === "tutorDone") { tutorDone(); }
+      else if (m.type === "tutorError") { tutorError(m.message, m.limited); }
+    };
+  }
+  function setRunning(on) { running = on; runBtn.disabled = on; stopBtn.disabled = !on; liveDot.classList.toggle("on", on); stdinInput.disabled = !on; if (on) setTimeout(() => stdinInput.focus(), 0); }
+  // Send a typed answer to the running program's input(); echo it in the console so the student sees it.
+  stdinInput.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (!ws || ws.readyState !== 1 || !running) return;
+    const text = stdinInput.value;
+    ws.send(JSON.stringify({ type: "stdin", text }));
+    consoleAppend(text + "\n", "input");
+    stdinInput.value = "";
+  });
+
+  runBtn.onclick = () => {
+    if (!ws || ws.readyState !== 1) return;
+    hideDone(); pushSave();
+    showTab("console");
+    consoleClear();
+    drawer.reset();
+    diagEl.textContent = "Starting…";
+    ws.send(JSON.stringify({ type: "run", source: codeEl.value }));
+  };
+  checkBtn.onclick = () => {
+    if (!ws || ws.readyState !== 1 || !current) return;
+    hideDone();
+    diagEl.textContent = "Checking your code against the lesson goals…";
+    ws.send(JSON.stringify({ type: "grade", lessonId: current.id, source: codeEl.value }));
+  };
+  stopBtn.onclick = () => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "stop" })); };
+
+  // ---- Tutor chat ----
+  const chatEl = document.getElementById("chat");
+  const chatInput = document.getElementById("chatInput");
+  const askBtn = document.getElementById("askBtn");
+  const tutorHistory = [];
+  let botEl = null, botText = "", lastQ = "";
+  function addMsg(text, cls) {
+    const d = document.createElement("div"); d.className = "msg " + cls; d.textContent = text;
+    chatEl.appendChild(d); chatEl.scrollTop = chatEl.scrollHeight; return d;
+  }
+  function renderBot(t) { return mdInline(esc(t)).replace(/\n/g, "<br>"); }
+  function tutorAppend(t) { if (!botEl) { botEl = addMsg("", "bot"); botText = ""; } botText += t; botEl.innerHTML = renderBot(botText); chatEl.scrollTop = chatEl.scrollHeight; }
+  function tutorDone() { if (lastQ) tutorHistory.push({ role: "user", content: lastQ }); if (botText) tutorHistory.push({ role: "assistant", content: botText }); botEl = null; botText = ""; askBtn.disabled = false; }
+  function tutorError(msg, limited) { if (botEl) { botEl.className = "msg bot err"; botEl.textContent = "⚠ " + msg; } else addMsg("⚠ " + msg, "bot err"); botEl = null; botText = ""; if (limited) { askBtn.disabled = true; setTimeout(() => { askBtn.disabled = false; }, 6000); } else { askBtn.disabled = false; } }
+  function ask() {
+    const q = chatInput.value.trim();
+    if (!q || !ws || ws.readyState !== 1) return;
+    addMsg(q, "me");
+    chatInput.value = ""; lastQ = q; askBtn.disabled = true; botEl = null; botText = "";
+    ws.send(JSON.stringify({ type: "tutor", lessonId: current ? current.id : undefined, code: codeEl.value, output: (consoleEl.innerText || diagEl.innerText || "").slice(0, 600), question: q, history: tutorHistory.slice(-6) }));
+  }
+  askBtn.onclick = ask;
+  chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); ask(); } });
+
+  window.__selectLesson = selectLesson;
+
+  // ---- Login + boot ----
+  async function init() {
+    try { progress = await (await fetch("/api/progress?student=" + student.id)).json(); } catch { progress = {}; }
+    whoEl.innerHTML = `👤 <b>${esc(student.name)}</b> · <a id="switchUser">switch</a>`;
+    const sw = document.getElementById("switchUser");
+    if (sw) sw.onclick = () => { localStorage.removeItem(STORE_KEY); location.reload(); };
+    connect();
+    loadLessons();
+  }
+  function showGate() {
+    gateEl.style.display = "flex";
+    const submit = async () => {
+      const name = nameInput.value.trim();
+      if (!name) return;
+      startBtn.disabled = true;
+      try {
+        student = await (await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })).json();
+        if (!student || !student.id) throw new Error("login failed");
+        localStorage.setItem(STORE_KEY, JSON.stringify(student));
+        gateEl.style.display = "none";
+        init();
+      } catch { startBtn.disabled = false; nameInput.value = ""; nameInput.placeholder = "Try again — enter your name"; }
+    };
+    startBtn.onclick = submit;
+    nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+    nameInput.focus();
+  }
+  window.__login = (name) => { nameInput.value = name; startBtn.click(); };
+
+  if (student && student.id) init(); else showGate();
+})();
+</script>
+</body>
+</html>
